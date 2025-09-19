@@ -24,8 +24,8 @@ def show_login_page():
         st.caption("Ваш умный помощник в карьерном развитии и поиске талантов.")
         
         with st.form("login_form"):
-            username = st.text_input("Имя пользователя", help="Для демо используйте: employee, hr, admin")
-            password = st.text_input("Пароль", type="password", help="Для демо используйте: employee, hr, admin")
+            username = st.text_input("Имя пользователя")
+            password = st.text_input("Пароль", type="password")
             
             submitted = st.form_submit_button("Войти", use_container_width=True, type="primary")
 
@@ -203,18 +203,31 @@ def show_hr_page():
 def show_admin_page():
     st.title("🛠️ Панель администратора")
     with st.expander("Создать нового пользователя", expanded=False):
-        with st.form("create_user_form", clear_on_submit=True):
+        with st.form("create_user_form", clear_on_submit=False): # clear_on_submit=False, чтобы показать пароль
             st.subheader("Данные нового пользователя")
             new_name = st.text_input("ФИО")
+            new_username = st.text_input("Логин (username)")
             new_role = st.selectbox("Роль", ["Работник", "HR"], index=0)
-            submitted = st.form_submit_button("✅ Создать пользователя")
-            if submitted and new_name and new_role:
-                with st.spinner(f"Создание пользователя {new_name}..."):
-                    response = api_client.create_user(name=new_name, role=new_role)
-                    if response:
-                        st.success(f"Пользователь '{response.get('name')}' успешно создан с ID {response.get('user_id')}!")
-            elif submitted:
-                st.warning("Пожалуйста, заполните все поля.")
+            
+            submitted = st.form_submit_button("✅ Создать и сгенерировать пароль")
+
+            if submitted:
+                if all([new_name, new_role, new_username]):
+                    with st.spinner(f"Создание пользователя {new_name}..."):
+                        # Вызываем api_client без пароля
+                        response = api_client.create_user(
+                            name=new_name, 
+                            role=new_role, 
+                            username=new_username,
+                            password=None # Передаем None, чтобы бэкенд сгенерировал пароль
+                        )
+                        if response:
+                            st.success(f"Пользователь '{response.get('name')}' успешно создан!")
+                            # Показываем сгенерированный пароль
+                            st.info(f"Сгенерированный пароль: **{response.get('generated_password')}**")
+                            st.warning("Скопируйте этот пароль сейчас. После закрытия формы он не будет доступен.")
+                else:
+                    st.warning("Пожалуйста, заполните ФИО, Логин и Роль.")
     st.markdown("---")
     st.subheader("Управление существующими пользователями")
     all_users = api_client.get_all_users()
@@ -231,7 +244,7 @@ def show_admin_page():
                     api_client.delete_user(user['id'])
                     st.toast(f"✅ Пользователь {user['name']} удален.")
                     progress_bar.progress((i + 1) / len(users_to_delete), text=f"Удалено {i+1} из {len(users_to_delete)}")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.info("Ни один пользователь не был отмечен для удаления.")
 

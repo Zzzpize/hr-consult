@@ -1,72 +1,66 @@
 import redis
 import json
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional, Any, Set
 
 class RedisClient:
-    """
-    Централизованный клиент для работы с Redis, инкапсулирующий всю логику
-    доступа к данным согласно принятой архитектуре.
-    """
     def __init__(self, host='redis', port=6379, db=0):
-        """
-        Инициализирует подключение к Redis.
-        Имя хоста 'redis' будет работать внутри Docker Compose.
-        """
         try:
             self.client = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                decode_responses=True # автоматически декодирует ответы из bytes в str
+                host=host, port=port, db=db, decode_responses=True
             )
-            # Проверяем соединение
             self.client.ping()
             print("Successfully connected to Redis.")
         except redis.exceptions.ConnectionError as e:
             print(f"Error connecting to Redis: {e}")
             self.client = None
 
-    # --- Методы для Админки и Управления Пользователями ---
+    # --- НОВЫЕ МЕТОДЫ ДЛЯ АУТЕНТИФИКАЦИИ ---
+    def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Находит пользователя по его username/nickname."""
+        if not self.client: return None
+        
+        user_id = self.client.hget("global:username_to_id", username)
+        if not user_id:
+            return None
+        
+        return self.get_user_profile(int(user_id))
 
-    def create_user(self, name: str, role: str, password: str = "password") -> Optional[int]:
+    def get_user_auth(self, user_id: int) -> Optional[str]:
+        """Получает пароль пользователя."""
+        if not self.client: return None
+        return self.client.get(f"user:{user_id}:auth")
+
+    # --- МЕТОДЫ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ (обновленные) ---
+    def create_user(self, name: str, role: str, username: str, password: str) -> Optional[int]:
         """Создает нового пользователя и все связанные с ним структуры."""
         if not self.client: return None
+        
+        # Проверяем, не занят ли username
+        if self.client.hget("global:username_to_id", username):
+            print(f"Username {username} already exists.")
+            return None # Возвращаем None в случае ошибки
 
         user_id = self.client.incr("global:next_user_id")
         
-        self.client.hset(f"user:{user_id}", mapping={
-            "id": user_id,
-            "name": name,
-            "role": role,
-            "nickname": f"user{user_id}",
-            "photo_url": "",
-            "about": ""
-        })
-
+        profile_data = {
+            "id": user_id, "name": name, "role": role,
+            "nickname": username, "photo_url": "", "about": ""
+        }
+        self.client.hset(f"user:{user_id}", mapping=profile_data)
         self.client.set(f"user:{user_id}:auth", password)
-
         self.client.hset(f"user:{user_id}:gamification", mapping={"xp": 0, "level": 1})
-
-
-        self.client.sadd(f"user:{user_id}:skills", "dummy")
-        self.client.srem(f"user:{user_id}:skills", "dummy")
-
-        self.client.sadd(f"user:{user_id}:achievements", "dummy")
-        self.client.srem(f"user:{user_id}:achievements", "dummy")
-
-        self.client.hset("global:username_to_id", f"user{user_id}", user_id)
-
+        self.client.hset("global:username_to_id", username, user_id)
+        
         return user_id
 
     def get_all_users_info(self) -> List[Dict]:
-        """Возвращает краткую информацию о всех пользователях."""
+        """Возвращает информацию о всех пользователях."""
         if not self.client: return []
-
-        user_ids = [key.split(':')[1] for key in self.client.scan_iter("user:*:gamification")]
         
+        user_ids_map = self.client.hgetall("global:username_to_id")
         users_list = []
-        for user_id in user_ids:
-            user_data = self.client.hgetall(f"user:{user_id}")
+        for username, user_id in user_ids_map.items():
+            user_data = self.get_user_profile(int(user_id))
             if user_data:
                 users_list.append(user_data)
         return users_list
@@ -75,13 +69,13 @@ class RedisClient:
         """Полностью удаляет пользователя и все его данные."""
         if not self.client: return
 
+        profile = self.get_user_profile(user_id)
+        if profile and 'nickname' in profile:
+            self.client.hdel("global:username_to_id", profile['nickname'])
+
         keys_to_delete = self.client.keys(f"user:{user_id}*")
         if keys_to_delete:
             self.client.delete(*keys_to_delete)
-
-        profile = self.client.hgetall(f"user:{user_id}")
-        if profile and 'nickname' in profile:
-            self.client.hdel("global:username_to_id", profile['nickname'])
 
     # --- Методы для профиля пользователя ---
     
