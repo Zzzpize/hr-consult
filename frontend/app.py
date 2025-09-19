@@ -136,18 +136,40 @@ def show_employee_page():
 
     with tab_offers:
         st.header("📬 Ваши предложения")
-        st.info("Здесь отображаются приглашения от HR-специалистов на участие в новых проектах или переход на новые должности.")
-        fake_offers = [{"hr_name": "Петр Петров", "vacancy": "Middle Python Developer", "status": "Новое"}]
-        for i, offer in enumerate(fake_offers):
-            with st.container(border=True):
-                col1, col2 = st.columns([3,1])
-                with col1:
-                    st.subheader(offer['vacancy'])
-                    st.caption(f"От: {offer['hr_name']}")
-                with col2:
+        user_id = st.session_state.user_info.get('user_id')
+        offers = api_client.get_user_offers(user_id)
+
+        if offers is None:
+            st.error("Не удалось загрузить офферы.")
+        elif not offers:
+            st.success("У вас пока нет новых предложений. Отличная работа!")
+        else:
+            for offer in offers:
+                with st.container(border=True):
+                    # Получаем имя HR для отображения
+                    hr_profile = api_client.get_user_profile(offer['from_hr_id'])
+                    hr_name = hr_profile.get('name') if hr_profile else "Неизвестный HR"
+
+                    st.subheader(offer['title'])
+                    st.caption(f"От: {hr_name}")
                     st.info(f"Статус: {offer['status']}")
-                    if st.button("👁️ Посмотреть", key=f"view_{i}"):
-                        st.toast(f"Просмотр оффера '{offer['vacancy']}' (симуляция)")
+                    
+                    with st.expander("Показать описание"):
+                        st.write(offer['description'])
+
+                    # Не показываем кнопки, если статус уже изменен
+                    if offer['status'] == "Отправлено":
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("👍 Принять", key=f"accept_{offer['id']}", use_container_width=True):
+                                api_client.update_offer_status(offer['id'], "Принято")
+                                st.toast("Оффер принят!")
+                                st.rerun()
+                        with c2:
+                            if st.button("👎 Отклонить", key=f"decline_{offer['id']}", use_container_width=True):
+                                api_client.update_offer_status(offer['id'], "Отклонено")
+                                st.toast("Оффер отклонен.")
+                                st.rerun()
 
 # =====================================================================================
 # --- СТРАНИЦА HR ---
@@ -194,8 +216,34 @@ def show_hr_page():
 
     with tab_my_offers:
         st.header("📄 Отслеживание отправленных офферов")
-        fake_sent_offers = [{"candidate_name": "Иван Иванов", "vacancy": "Middle Python Developer", "sent_at": "2024-09-18 15:30", "status": "Просмотрено"}]
-        st.data_editor(fake_sent_offers, column_config={"candidate_name": "Кандидат", "vacancy": "Вакансия", "sent_at": "Отправлено", "status": "Статус"}, hide_index=True, use_container_width=True, disabled=True)
+        hr_id = st.session_state.user_info.get('user_id')
+        sent_offers = api_client.get_hr_offers(hr_id)
+
+        if sent_offers is None:
+            st.error("Не удалось загрузить отправленные офферы.")
+        elif not sent_offers:
+            st.info("Вы еще не отправили ни одного оффера.")
+        else:
+            # Готовим данные для таблицы
+            display_data = []
+            for offer in sent_offers:
+                user_profile = api_client.get_user_profile(offer['to_user_id'])
+                user_name = user_profile.get('name') if user_profile else "Неизвестный сотрудник"
+                display_data.append({
+                    "candidate_name": user_name,
+                    "vacancy": offer['title'],
+                    "sent_at": offer.get('timestamp', '').strip('"'),
+                    "status": offer['status']
+                })
+
+            st.data_editor(
+                display_data,
+                column_config={
+                    "candidate_name": "Кандидат", "vacancy": "Вакансия", 
+                    "sent_at": "Отправлено", "status": "Статус"
+                },
+                hide_index=True, use_container_width=True, disabled=True
+            )
 
 # =====================================================================================
 # --- СТРАНИЦА АДМИНА ---

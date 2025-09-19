@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from .api import users, auth, career_plan, matching, gamification
+from .api import users, auth, career_plan, matching, gamification, offers
 from .initial_data import create_initial_admin
 
 # --- Lifespan Event ---
@@ -25,6 +25,7 @@ app.include_router(auth.router)
 app.include_router(career_plan.router)
 app.include_router(matching.router)
 app.include_router(gamification.router)
+app.include_router(offers.router)
 
 @app.get("/", tags=["Root"])
 def read_root():

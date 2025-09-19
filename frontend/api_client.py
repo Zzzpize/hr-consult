@@ -83,3 +83,31 @@ def get_user_progress(user_id: int) -> Optional[Dict[str, Any]]:
 def trigger_gamification_event(user_id: int, event_key: str) -> Optional[Dict[str, Any]]:
     response = requests.post(f"{BASE_URL}/gamification/event/{user_id}", params={"event_key": event_key})
     return response
+
+@_handle_request_errors
+def create_offer(from_hr_id: int, to_user_id: int, title: str, description: str) -> Optional[Dict[str, Any]]:
+    """Создает новый оффер."""
+    payload = {
+        "from_hr_id": from_hr_id, "to_user_id": to_user_id,
+        "title": title, "description": description
+    }
+    response = requests.post(f"{BASE_URL}/offers/", json=payload)
+    return response
+
+@_handle_request_errors
+def get_user_offers(user_id: int) -> Optional[List[Dict[str, Any]]]:
+    """Получает офферы для сотрудника."""
+    response = requests.get(f"{BASE_URL}/offers/user/{user_id}")
+    return response
+
+@_handle_request_errors
+def get_hr_offers(hr_id: int) -> Optional[List[Dict[str, Any]]]:
+    """Получает офферы, отправленные HR."""
+    response = requests.get(f"{BASE_URL}/offers/hr/{hr_id}")
+    return response
+
+@_handle_request_errors
+def update_offer_status(offer_id: int, status: str) -> Optional[Dict[str, Any]]:
+    """Обновляет статус оффера."""
+    response = requests.put(f"{BASE_URL}/offers/{offer_id}/status", json={"status": status})
+    return response
