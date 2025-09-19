@@ -104,6 +104,7 @@ def trigger_gamification_event(user_id: int, event_key: str) -> Optional[Dict[st
     """Сообщает бэкенду о произошедшем игровом событии."""
     response = requests.post(
         f"{BASE_URL}/gamification/event/{user_id}",
-        params={"event_key": event_key} # FastAPI ожидает event_key как query parameter
+        params={"event_key": event_key} 
     )
     return response
+    

@@ -138,5 +138,7 @@ class RedisClient:
         if embedding_json:
             return json.loads(embedding_json)
         return None
+    
+    
 
 redis_client = RedisClient()
