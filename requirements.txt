@@ -1,3 +1,6 @@
 openai
 redis
 streamlit
+fastapi
+uvicorn[standard]
+requests
