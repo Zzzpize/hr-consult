@@ -60,8 +60,8 @@ def get_user_profile(user_id: int):
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if 'skills' not in profile:
-        profile['skills'] = ["python", "fastapi", "docker"]
+    skills = redis_client.get_user_skills(user_id)
+    profile['skills'] = list(skills)
     if 'photo_url' not in profile or not profile['photo_url']:
         profile['photo_url'] = f"https://i.pravatar.cc/150?u={user_id}" 
     

@@ -42,61 +42,101 @@ def show_login_page():
 # --- СТРАНИЦА РАБОТНИКА ---
 # =====================================================================================
 def show_employee_page():
-    """Отрисовывает интерфейс для сотрудника."""
     st.title(f"👋 Привет, {st.session_state.user_info.get('name')}!")
     st.caption("Это ваш личный карьерный навигатор. Здесь вы можете отслеживать свой прогресс, строить планы развития и получать предложения о новых ролях.")
     st.markdown("---")
 
-    tab_profile, tab_plan, tab_offers = st.tabs([
-        "👤 Мой профиль", 
-        "🗺️ Карьерный план", 
-        "📬 Офферы"
-    ])
+    tab_profile, tab_plan, tab_offers = st.tabs(["👤 Мой профиль", "🗺️ Карьерный план", "📬 Офферы"])
 
     with tab_profile:
         user_id = st.session_state.user_info.get('user_id')
         
-        @st.cache_data(ttl=60)
+        @st.cache_data(ttl=5) 
         def get_profile_data(uid):
-            return api_client.get_user_profile(uid), api_client.get_user_progress(uid)
+            profile = api_client.get_user_profile(uid)
+            gamification = api_client.get_user_progress(uid)
+            return profile, gamification
+        
+        if "edit_mode" not in st.session_state:
+            st.session_state.edit_mode = False
 
+        # --- Кнопка для переключения в режим редактирования ---
+        # Если мы не в режиме редактирования, показываем кнопку
+        if not st.session_state.edit_mode:
+            if st.button("✏️ Редактировать профиль"):
+                st.session_state.edit_mode = True
+                st.rerun()
+
+        # --- НАДЕЖНАЯ ФОРМА РЕДАКТИРОВАНИЯ (без st.dialog) ---
+        # Эта форма будет появляться прямо на странице, когда edit_mode == True
+        if st.session_state.edit_mode:
+            with st.container(border=True):
+                st.subheader("Редактирование профиля")
+                profile_data_to_edit, _ = get_profile_data(user_id)
+                
+                with st.form("edit_profile_form"):
+                    nickname_val = profile_data_to_edit.get("nickname", "")
+                    about_val = profile_data_to_edit.get("about", "")
+                    skills_list = profile_data_to_edit.get("skills", [])
+                    skills_val = ", ".join(skills_list)
+
+                    new_nickname = st.text_input("Никнейм", value=nickname_val)
+                    new_about = st.text_area("Обо мне", value=about_val, height=150)
+                    new_skills_str = st.text_input("Навыки (через запятую)", value=skills_val)
+
+                    col1, col2 = st.columns([1,1])
+                    with col1:
+                        if st.form_submit_button("Сохранить", use_container_width=True, type="primary"):
+                            new_skills_list = [skill.strip() for skill in new_skills_str.split(",") if skill.strip()]
+                            
+                            with st.spinner("Сохранение..."):
+                                api_client.update_user_profile(user_id, new_nickname, new_about, new_skills_list)
+                            
+                            st.toast("Профиль успешно обновлен!")
+                            st.session_state.edit_mode = False
+                            st.rerun()
+                    with col2:
+                        if st.form_submit_button("Отмена", use_container_width=True):
+                            st.session_state.edit_mode = False
+                            st.rerun()
+
+        # --- Отображение профиля (основная часть) ---
+        # Этот блок будет виден всегда, даже во время редактирования, что может быть удобно
         profile_data, gamification_data = get_profile_data(user_id)
 
         if not profile_data or not gamification_data:
-            st.error("Не удалось загрузить данные профиля. Попробуйте обновить страницу.")
+            st.error("Не удалось загрузить данные профиля.")
         else:
             col1, col2 = st.columns([1, 4])
             with col1:
                 st.image(profile_data.get("photo_url", ""), use_container_width=True, caption=profile_data.get("nickname"))
             with col2:
                 st.header(profile_data.get("name"))
-                st.subheader(profile_data.get("position"))
-                st.markdown(f"**Обо мне:** *{profile_data.get('about')}*")
-            
-            st.markdown("---")
-            st.subheader("Ваш прогресс")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("✨ Очки опыта (XP)", gamification_data.get('xp', 0))
-            with col2:
-                st.metric("🚀 Уровень", f"Lvl {gamification_data.get('level', 1)}")
-
-            achievements = gamification_data.get('achievements', [])
-            if achievements:
-                st.write("**Полученные достижения:** " + " ".join([f"🏆 `{ach}`" for ach in achievements]))
-
+                st.subheader(profile_data.get("position", "Должность не указана"))
+                st.markdown(f"**Обо мне:** *{profile_data.get('about', 'Информация не заполнена')}*")
             st.markdown("---")
             st.subheader("Ключевые навыки")
             skills = profile_data.get("skills", [])
             if skills:
                 st.info(" ".join([f"`{skill.upper()}`" for skill in skills]))
             else:
-                st.warning("Вы еще не добавили ни одного навыка.")
+                st.warning("Вы еще не добавили ни одного навыка. Нажмите 'Редактировать профиль', чтобы добавить их.")
+            
+            st.markdown("---")
+            st.subheader("Ваш прогресс")
+            g_col1, g_col2 = st.columns(2)
+            with g_col1:
+                st.metric("✨ Очки опыта (XP)", gamification_data.get('xp', 0))
+            with g_col2:
+                st.metric("🚀 Уровень", f"Lvl {gamification_data.get('level', 1)}")
 
+            achievements = gamification_data.get('achievements', [])
+            if achievements:
+                st.write("**Полученные достижения:** " + " ".join([f"🏆 `{ach}`" for ach in achievements]))
+            
             with st.expander("⚙️ Настройки профиля"):
-                st.toggle("Скрыть карьерный путь от коллег", value=profile_data.get('career_path_visible', True))
-                st.toggle("Показывать мой уровень в профиле", value=profile_data.get('level_visible', True))
-                st.toggle("Показывать мои достижения", value=profile_data.get('achievements_visible', True))
+                st.toggle("Скрыть карьерный путь", value=True)
+                st.toggle("Показывать мой уровень", value=True)
                 if st.button("Сохранить настройки", type="secondary"):
                     st.toast("Настройки сохранены (симуляция)")
 

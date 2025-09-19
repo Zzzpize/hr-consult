@@ -111,3 +111,16 @@ def update_offer_status(offer_id: int, status: str) -> Optional[Dict[str, Any]]:
     """Обновляет статус оффера."""
     response = requests.put(f"{BASE_URL}/offers/{offer_id}/status", json={"status": status})
     return response
+
+@_handle_request_errors
+def get_user_skills(user_id: int) -> Optional[List[str]]:
+    """Получает список навыков пользователя."""
+    profile = get_user_profile(user_id)
+    return profile.get('skills', []) if profile else []
+
+@_handle_request_errors
+def update_user_profile(user_id: int, nickname: str, about: str, skills: List[str]) -> Optional[Dict[str, Any]]:
+    """Обновляет профиль пользователя."""
+    payload = {"nickname": nickname, "about": about, "skills": skills}
+    response = requests.put(f"{BASE_URL}/profile/{user_id}", json=payload)
+    return response

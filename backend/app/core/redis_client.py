@@ -159,6 +159,21 @@ class RedisClient:
         """Обновляет статус оффера."""
         if not self.client: return
         self.client.hset(f"offer:{offer_id}", "status", new_status)
+    
+    def update_user_profile(self, user_id: int, profile_data: Dict[str, Any]):
+        """Обновляет поля в профиле пользователя."""
+        if not self.client: return
+        # hset безопасно обновит только те поля, которые переданы
+        self.client.hset(f"user:{user_id}", mapping=profile_data)
+
+    def update_user_skills(self, user_id: int, skills: List[str]):
+        """Полностью заменяет список навыков пользователя."""
+        if not self.client: return
+        key = f"user:{user_id}:skills"
+        # Удаляем старый ключ и создаем заново, чтобы удалить старые навыки
+        self.client.delete(key)
+        if skills: # Добавляем навыки, только если список не пуст
+            self.client.sadd(key, *skills)
 
 
 # Создаем единый экземпляр клиента для всего приложения
