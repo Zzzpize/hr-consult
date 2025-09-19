@@ -20,26 +20,39 @@ def exchange(system_prompt: str, user_text: str, temperature: float = 0.8, max_t
     except Exception as e:
         return f"\n--- ПРОИЗОШЛА ОШИБКА ---\n{e}"
     
-def question(target, disclaimer):
-    answer = exchange(f"Попробуй вычленить из ответа пользователя {target} и запиши через пробел. Если не получится – верни строчку 'system message: name is not found'\n" + disclaimer, input())
+def question(target, context):
+    answer = exchange(f"Попробуй вычленить из ответа пользователя {target} и запиши через пробел. Если не получится – верни строчку 'system message: name is not found'\n" + context, input())
     while answer.lower() == "system message: name is not found":
-        print(exchange(f"Переспроси пользователя его {target}, так как ты не смог его вычленить из ответа\n" + disclaimer, ""))
-        answer = exchange(f"Попробуй вычленить из ответа пользователя {target} и запиши его через пробел. Если не получится – верни строчку 'system message: name is not found'\n" + disclaimer, input())
+        print(exchange(f"Переспроси пользователя его {target}, так как ты не смог его вычленить из ответа\n" + context, ""))
+        answer = exchange(f"Попробуй вычленить из ответа пользователя {target} и запиши его через пробел. Если не получится – верни строчку 'system message: name is not found'\n" + context, input())
     return answer
 
 def conversation():
-    with open("backend/app/services/disclaimer.txt", "a+", encoding = "utf-8") as f:
+    with open("backend/app/services/context.txt", "a+", encoding = "utf-8") as f:
         f.write("Обращения на 'Вы' всегда пиши с большой буквы. Будь вежливым, но не жеманным и льстительным.")
-        disclaimer = (f.seek(0) or f.read())
-        print(exchange("Как-нибудь перефразируй фразу, оставив смысл прежним\n" + disclaimer, "Привет! Я умный HR-консультант, который поможет Вам подняться по карьерной лестнице в компании. Для начала работы, пожалуйста, напишите свое ФИО."))
-        name = question("ФИО", disclaimer)
-        f.write(f"\nИмя пользователя – {name}. При необходимости обращайся к нему по имени.")
-        disclaimer = (f.seek(0) or f.read())
-        print(exchange("Спроси пользователя, в каком отделе он работает и какую должность занимает\n" + disclaimer, ""))
-        place = question("отдел и должность", disclaimer)
-        f.write(f"\nОтдел и должность – {place.lower()}.\n")
-        disclaimer = (f.seek(0) or f.read())
-    os.remove("backend/app/services/disclaimer.txt")
+        context = (f.seek(0) or f.read())
+        print(exchange("Как-нибудь перефразируй фразу, оставив смысл прежним\n" + context, "Привет! Я умный HR-консультант, который поможет Вам подняться по карьерной лестнице в компании. Для начала работы, пожалуйста, напишите свое ФИО."))
+        name = question("ФИО", context)
+        f.write(f"\nИмя пользователя – {name}. При необходимости обращайся к нему по имени. Здороваться не нужно.")
+        context = (f.seek(0) or f.read())
+        print(exchange("Спроси пользователя, в каком отделе он работает и какую должность занимает, а также его стаж\n" + context, ""))
+        place = question("отдел, должность и стаж", context)
+        f.write(f"\nОтдел, должность и стаж – {place.lower()}.")
+        context = (f.seek(0) or f.read())
+        print(exchange("Спроси пользователя, какие навыки у него есть (из hard skills – наименования конкретных фреймворков, которые он использовал; из soft skills – нетворкинг, может быть, опыт работы в команде и т.д.)\n" + context, ""))
+        skills = question("hard и soft skills", context)
+        f.write(f"\nНавыки – {skills.lower()}.")
+        context = (f.seek(0) or f.read())
+        print(exchange("Спроси пользователя, какие 2 последних проекта он реализовал\n" + context, ""))
+        projects = question("словесное описание ('краткий пересказ') 2 последних реализованных проектов", context)
+        f.write(f"\n2 последних реализованных проекта – {projects.lower()}.")
+        context = (f.seek(0) or f.read())
+        print(exchange("Спроси пользователя, какие амбиции у него (на какую должность он хочет попасть)\n" + context, ""))
+        ambitions = question("амбиции (на какую должность он хочет попасть)", context)
+        f.write(f"\nАмбиции – {ambitions.lower()}.")
+        context = (f.seek(0) or f.read())
+        print(context)
+    os.remove("backend/app/services/context.txt")
 
 def main():
     conversation()
