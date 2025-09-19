@@ -1,10 +1,8 @@
-version: "3.8"
-
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/DockerFile
     container_name: talent_navigator_backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
@@ -18,8 +16,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./frontend/DockerFile
     container_name: talent_navigator_frontend
     command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
     volumes:
