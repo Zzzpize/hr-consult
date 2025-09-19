@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from .api import users, auth, career_plan, matching, gamification
 
 app = FastAPI(
     title="HR Navigator AI API",
@@ -6,9 +7,12 @@ app = FastAPI(
     version="0.1.0"
 )
 
-@app.get("/")
+app.include_router(users.router)
+app.include_router(auth.router)
+app.include_router(career_plan.router)
+app.include_router(matching.router)
+app.include_router(gamification.router)
+
+@app.get("/", tags=["Root"])
 def read_root():
-    """
-    Корневой эндпоинт для проверки, что API работает.
-    """
-    return {"status": "ok", "message": "Welcome to Talent Navigator AI API!"}
+    return {"status": "ok", "message": "Welcome to HR Navigator AI API!"}
