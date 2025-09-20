@@ -163,18 +163,37 @@ class RedisClient:
     def update_user_profile(self, user_id: int, profile_data: Dict[str, Any]):
         """Обновляет поля в профиле пользователя."""
         if not self.client: return
-        # hset безопасно обновит только те поля, которые переданы
         self.client.hset(f"user:{user_id}", mapping=profile_data)
 
     def update_user_skills(self, user_id: int, skills: List[str]):
         """Полностью заменяет список навыков пользователя."""
         if not self.client: return
         key = f"user:{user_id}:skills"
-        # Удаляем старый ключ и создаем заново, чтобы удалить старые навыки
         self.client.delete(key)
-        if skills: # Добавляем навыки, только если список не пуст
+        if skills:
             self.client.sadd(key, *skills)
 
+    # --- Методы для Диалоговой Системы ---
+    def get_chat_history(self, user_id: int) -> List[Dict]:
+        """Получает историю чата из Redis List."""
+        if not self.client: return []
+        history_json = self.client.lrange(f"user:{user_id}:chat_history", 0, -1)
+        return [json.loads(msg) for msg in history_json]
 
-# Создаем единый экземпляр клиента для всего приложения
+    def add_message_to_history(self, user_id: int, message: Dict):
+        """Добавляет новое сообщение в историю чата."""
+        if not self.client: return
+        self.client.lpush(f"user:{user_id}:chat_history", json.dumps(message))
+
+    def get_dialog_state(self, user_id: int) -> Dict:
+        """Получает состояние анкеты-диалога."""
+        if not self.client: return {}
+        state = self.client.hgetall(f"user:{user_id}:dialog_state")
+        return {k: v.lower() == 'true' for k, v in state.items()}
+
+    def update_dialog_state(self, user_id: int, key: str, value: bool):
+        """Обновляет состояние анкеты-диалога."""
+        if not self.client: return
+        self.client.hset(f"user:{user_id}:dialog_state", key, str(value).lower())
+
 redis_client = RedisClient()

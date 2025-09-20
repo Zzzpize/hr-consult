@@ -138,37 +138,47 @@ def show_employee_page():
 
     with tab_plan:
         st.header("🤖 Ваш персональный ИИ-консультант")
-        st.info("Нажмите на кнопку ниже, чтобы наш ИИ проанализировал ваш профиль, навыки и цели, и построил персональный план развития внутри компании.")
+        user_id = st.session_state.user_info.get('user_id')
 
-        if st.button("🚀 Построить мой карьерный путь", type="primary", use_container_width=True):
-            user_id = st.session_state.user_info.get('user_id')
-            with st.spinner("🧠 ИИ-консультант анализирует ваш профиль... Это может занять до 30 секунд."):
-                plan = api_client.generate_career_plan(user_id)
+        if "messages" not in st.session_state:
+            with st.spinner("Загрузка вашей истории диалога..."):
+                history_data = api_client.get_chat_history(user_id)
+            if history_data and history_data.get("history"):
+                st.session_state.messages = history_data["history"]
+            else:
+                st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор', ваш карьерный ИИ-помощник. Чтобы начать, расскажите немного о себе и своих целях."}]
 
-            if plan:
-                st.balloons()
-                st.subheader("✅ Ваш персональный план готов!")
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("Напишите ваше сообщение..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Думаю..."):
+                    response_data = api_client.get_chat_response(user_id, prompt)
+                    if response_data:
+                        bot_response = response_data.get("response", "Извините, произошла ошибка.")
+                        st.markdown(bot_response)
+                        st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                    else:
+                        st.error("Не удалось получить ответ от сервера.")
+        
+        if len(st.session_state.messages) > 3: 
+            if st.button("✅ Сгенерировать карьерный план на основе диалога", use_container_width=True, type="primary"):
+                with st.spinner("Систематизирую всю информацию и составляю ваш персональный план..."):
+                    plan_data = api_client.generate_final_plan_from_chat(user_id)
                 
-                with st.container(border=True):
-                    st.markdown("### 🔍 Анализ текущей роли")
-                    st.success(plan.get("current_analysis", "Нет данных."))
-                with st.container(border=True):
-                    st.markdown("### 🧭 Рекомендуемый следующий шаг")
-                    path = plan.get("recommended_path", {})
-                    st.info(f"**Целевая роль:** {path.get('target_role', 'Не определена')}\n\n"
-                            f"**Почему она вам подходит:** {path.get('why_it_fits', 'Нет данных.')}")
-                with st.container(border=True):
-                    st.markdown("### 🎯 Навыки для развития (Skill Gap)")
-                    skill_gap = plan.get("skill_gap", [])
-                    if skill_gap:
-                        for gap in skill_gap:
-                            st.markdown(f"- **`{gap.get('skill')}`** — {gap.get('reason')}")
-                with st.container(border=True):
-                    st.markdown("### 📝 План действий")
-                    action_steps = plan.get("actionable_steps", [])
-                    if action_steps:
-                        for step in action_steps:
-                            st.markdown(f"**Шаг {step.get('step')} ({step.get('type')}):** {step.get('description')}")
+                if plan_data and plan_data.get("plan"):
+                    st.balloons()
+                    st.subheader("Ваш персональный план готов!")
+                    st.json(plan_data.get("plan")) 
+                    # TODO: Добавить красивый парсинг JSON, как было раньше
+                else:
+                    st.error("Не удалось сгенерировать план.")
 
     with tab_offers:
         st.header("📬 Ваши предложения")

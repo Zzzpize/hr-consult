@@ -44,7 +44,6 @@ def create_user(name: str, role: str, username: str, password: Optional[str] = N
         "role": role,
         "username": username,
     }
-    # Добавляем пароль в тело запроса только если он предоставлен
     if password:
         payload["password"] = password
     
@@ -60,13 +59,13 @@ def delete_user(user_id: int) -> Optional[Dict[str, Any]]:
 def get_user_profile(user_id: int) -> Optional[Dict[str, Any]]:
     response = requests.get(f"{BASE_URL}/users/{user_id}/profile")
     return response
-
+'''
 # --- Career Plan AI ---
 @_handle_request_errors
 def generate_career_plan(user_id: int) -> Optional[Dict[str, Any]]:
     response = requests.post(f"{BASE_URL}/career-plan/", json={"user_id": user_id})
     return response
-
+'''
 # --- Candidate Matching AI ---
 @_handle_request_errors
 def match_candidates(prompt: str) -> Optional[List[Dict[str, Any]]]:
@@ -124,3 +123,18 @@ def update_user_profile(user_id: int, nickname: str, about: str, skills: List[st
     payload = {"nickname": nickname, "about": about, "skills": skills}
     response = requests.put(f"{BASE_URL}/profile/{user_id}", json=payload)
     return response
+
+@_handle_request_errors
+def get_chat_history(user_id: int) -> Optional[Dict]:
+    """Получает историю чата для пользователя."""
+    return requests.get(f"{BASE_URL}/chat/history/{user_id}").json()
+
+@_handle_request_errors
+def get_chat_response(user_id: int, message: str) -> Optional[Dict]:
+    """Отправляет сообщение в чат и получает ответ бота."""
+    return requests.post(f"{BASE_URL}/chat/message", json={"user_id": user_id, "message": message}).json()
+
+@_handle_request_errors
+def generate_final_plan_from_chat(user_id: int) -> Optional[Dict]:
+    """Отправляет запрос на генерацию финального плана на основе истории чата."""
+    return requests.post(f"{BASE_URL}/chat/generate-plan", json={"user_id": user_id}).json()
