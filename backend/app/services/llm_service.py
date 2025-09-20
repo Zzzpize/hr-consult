@@ -11,7 +11,6 @@ system_prompt_info = "Ты — дружелюбный и эмпатичный к
 
 system_prompt_analyze = "Ты — дружелюбный и эмпатичный карьерный консультант 'Навигатор'. Говорить, кто ты – НЕ НУЖНО. Приветствовать человека 'Привет' или 'Здравствуйте' – НЕ НУЖНО. Сразу переходи к делу. Твоя цель — построить последовательный карьерный план на основании известной о пользователе информации. Вся уже собранная информация будет прикреплена последним абзацем в виде словаря (тебя будут интересовать элементы с ключом 'role' = 'user', 5 пунктов: ФИО, отдел/должность/стаж, навыки, проекты и амбиции). Информацию о пользователе ты ищешь по принципу первого вхождения: если, например, пользователь уже указал свое имя, ответив на твой вопрос, а затем снова написал какое-то другое, то ты не обращаешь внимания и обращаешься по первому имени. И так со всеми пунктами. Будь вежливым, но не жеманным и льстительным. При необходимости обращайся по имени. Вот текущая история общения с пользователем, где ты можешь найти информацию о нем:\n"
 
-
 example_plan = {
   "plan_id": "plan_1726834988_user_3", 
   "created_at": "...",
@@ -59,12 +58,13 @@ example_plan = {
 
 system_prompt_plan = "Вычлени из данного ответа всю необходимую информацию, чтобы полностью заполнить все поля, как в данном примере:\n{example_plan}\nВерни мне одной строкой аналогичный json-подобный объект, без лишних комментариев\n"
 
-def exchange(messages: list, temperature: float = 0.8, max_tokens: int = 400):
+def exchange(messages: list, temperature: float = 1, max_tokens: int = 2000, response_format = None):
     try:
-        client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+        client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
         resp = client.chat.completions.create(
             model = "Qwen2.5-72B-Instruct-AWQ",
-            messages=messages,
+            messages = messages,
+            response_format = response_format,
             temperature = temperature,
             max_tokens = max_tokens,
         )
@@ -83,8 +83,13 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
 
 def generate_final_plan_from_chat(user_id: int) -> Dict:
     history = redis_client.get_active_chat_history(user_id)
-    messages_for_llm = [{"role": "system", "content": system_prompt_analyze}] + history
-    answer = exchange(messages_for_llm)
+    final_system_prompt = (
+        f"{system_prompt_analyze}\n\n"
+        "После анализа, твоя задача — вернуть результат ИСКЛЮЧИТЕЛЬНО в формате JSON, без каких-либо вводных слов или комментариев. "
+        f"Структура JSON должна строго соответствовать этому примеру: {json.dumps(example_plan, ensure_ascii=False)}"
+    )
+    messages_for_llm = [{"role": "system", "content": final_system_prompt}] + history
+    answer = exchange(messages_for_llm, response_format={"type": "json_object"})
     plan_data = json.loads(answer)
     plan_data['plan_id'] = f"plan_{int(datetime.now().timestamp())}_user_{user_id}"
     plan_data['created_at'] = datetime.now(timezone.utc).isoformat()
