@@ -176,5 +176,65 @@ def extract_profile_data_from_chat(history: List[Dict]) -> Dict:
         "Если какую-то информацию найти не удалось, оставь соответствующее поле пустым. "
         "Верни только JSON объект, без лишних слов."
     )
+
+    def lemmatization(hr_text: str) -> Dict:
+
+        system_prompt = """
+        Вы специалист по морфологическому анализу текста. 
+        Ваша задача — выполнять лемматизацию русских и английских слов, приводя их к начальной словарной форме с учетом контекста и части речи.
+        \n\nИНСТРУКЦИИ ПО ЛЕММАТИЗАЦИИ:\n
+        1. Анализируйте контекст каждого слова для определения правильной части речи\n
+        2. Учитывайте морфологические особенности языка (падежи, времена, числа, лица)\n
+        3. Для омонимов используйте контекст для выбора правильной леммы\n
+        4. Сохраняйте пунктуацию и специальные символы без изменений\n
+        5. Обрабатывайте неологизмы и редкие слова на основе морфологических правил\n\n
+        ФОРМАТ ОТВЕТА: Отвечайте ТОЛЬКО валидным JSON без дополнительного текста. """
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": hr_text}
+        ]
+        raw_response = exchange(messages)
+        try:
+            return json.loads(raw_response)
+        except json.JSONDecodeError:
+            return {"error": "Не удалось распарсить ответ модели", "raw_response": raw_response}
+
+    def find_best_candidate(users_list: List[Dict], hr_request: Dict) -> Dict:
+
+        if not users_list:
+            return {"error": "Список пользователей пуст"}
+
+
+        hr_vector = get_embedding(" ".join(hr_request.get('lemmas', [])))
+        if isinstance(hr_vector, str):  # Проверка на ошибку
+            return {"error": f"Ошибка векторизации запроса HR: {hr_vector}"}
+
+        best_candidate = None
+        best_score = -1
+
+        for user in users_list:
+
+            user_info = f"{user.get('name', '')} {user.get('position', '')} {' '.join(user.get('skills', []))}"
+
+            # Векторизация
+            user_vector = get_embedding(user_info)
+            if isinstance(user_vector, str):  # Проверка на ошибку
+                continue
+
+            # Расчет косинусной близости
+            similarity = cosine_similarity(hr_vector, user_vector)
+
+            # Обновление
+            if similarity > best_score:
+                best_score = similarity
+                best_candidate = {
+                    **user,
+                    "similarity_score": similarity
+                }
+
+        if best_candidate:
+            return best_candidate
+        return {"error": "Не найдено подходящих кандидатов"}
+
     messages_for_llm = history + [{"role": "system", "content": extraction_prompt}]
     return json.loads(exchange(messages_for_llm, response_format = {"type": "json_object"}))
