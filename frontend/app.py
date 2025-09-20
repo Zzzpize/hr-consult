@@ -1,5 +1,8 @@
+import os
 import streamlit as st
 import api_client
+import time
+from typing import Dict
 
 # --- Конфигурация страницы ---
 st.set_page_config(
@@ -39,9 +42,24 @@ def show_login_page():
 # =====================================================================================
 # --- СТРАНИЦА РАБОТНИКА ---
 # =====================================================================================
+
 def show_employee_page():
     st.title(f"👋 Привет, {st.session_state.user_info.get('name')}!")
     st.caption("Это ваш личный карьерный навигатор. Здесь вы можете отслеживать свой прогресс, строить планы развития и получать предложения о новых ролях.")
+
+    if "event_response" in st.session_state and st.session_state.event_response:
+        response = st.session_state.event_response
+        if response.get("unlocked_achievements"):
+            for ach in response["unlocked_achievements"]:
+                st.success(f"🏆 Новое достижение: **{ach['name']}**!")
+                st.balloons()
+                time.sleep(2.5)
+        if response.get("xp_added", 0) > 0:
+            st.toast(f"✨ +{response['xp_added']} XP!")
+
+        st.session_state.event_response = None
+        st.cache_data.clear() 
+
     st.markdown("---")
 
     tab_profile, tab_plan, tab_offers = st.tabs([
@@ -50,21 +68,23 @@ def show_employee_page():
         "📬 Офферы"
     ])
 
+    user_id = st.session_state.user_info.get('user_id')
+
     # =====================================================================================
     # --- ВКЛАДКА 1: МОЙ ПРОФИЛЬ ---
     # =====================================================================================
     with tab_profile:
-        user_id = st.session_state.user_info.get('user_id')
-        
-        @st.cache_data(ttl=5) 
-        def get_profile_data(uid):
+        @st.cache_data(ttl=10) 
+        def get_all_profile_data(uid):
             profile = api_client.get_user_profile(uid)
             gamification = api_client.get_user_progress(uid)
-            return profile, gamification
+            achievements = api_client.get_user_achievements_status(uid)
+            return profile, gamification, achievements
         
-        if "edit_mode" not in st.session_state:
-            st.session_state.edit_mode = False
-
+        profile_data, gamification_data, achievements_data = get_all_profile_data(user_id)
+        
+        if "edit_mode" not in st.session_state: st.session_state.edit_mode = False
+        
         if not st.session_state.edit_mode:
             if st.button("✏️ Редактировать профиль"):
                 st.session_state.edit_mode = True
@@ -73,43 +93,38 @@ def show_employee_page():
         if st.session_state.edit_mode:
             with st.container(border=True):
                 st.subheader("Редактирование профиля")
-                profile_data_to_edit, _ = get_profile_data(user_id)
                 with st.form("edit_profile_form"):
-                    name_val = profile_data_to_edit.get("name", "")
-                    nickname_val = profile_data_to_edit.get("nickname", "")
-                    photo_url_val = profile_data_to_edit.get("photo_url", "")
-                    about_val = profile_data_to_edit.get("about", "")
-                    skills_list = profile_data_to_edit.get("skills", [])
+                    name_val = profile_data.get("name", "")
+                    nickname_val = profile_data.get("nickname", "")
+                    photo_url_val = profile_data.get("photo_url", "")
+                    about_val = profile_data.get("about", "")
+                    skills_list = profile_data.get("skills", [])
                     skills_val = ", ".join(skills_list)
-
                     new_name = st.text_input("Ваше ФИО", value=name_val)
                     new_nickname = st.text_input("Никнейм (логин)", value=nickname_val)
-                    new_photo_url = st.text_input("URL аватара", value=photo_url_val, help="Вставьте прямую ссылку на изображение (например, с Imgur, GitHub).")
+                    new_photo_url = st.text_input("URL аватара", value=photo_url_val)
                     new_about = st.text_area("Обо мне", value=about_val, height=150)
                     new_skills_str = st.text_input("Навыки (через запятую)", value=skills_val)
+                    
                     col1, col2 = st.columns([1,1])
                     with col1:
                         if st.form_submit_button("Сохранить", use_container_width=True, type="primary"):
                             new_skills_list = [skill.strip() for skill in new_skills_str.split(",") if skill.strip()]
+                            old_profile_for_event = {"skills": profile_data.get('skills', [])}
+                            new_profile_for_event = {"about": new_about, "skills": new_skills_list, "name": new_name, "photo_url": new_photo_url}
+                            
                             with st.spinner("Сохранение..."):
-                                api_client.update_user_profile(user_id, 
-                                    name=new_name, 
-                                    nickname=new_nickname, 
-                                    about=new_about, 
-                                    photo_url=new_photo_url,
-                                    skills=new_skills_list
-                                )
-                            st.toast("Профиль успешно обновлен!")
+                                api_client.update_user_profile(user_id, name=new_name, nickname=new_nickname, about=new_about, photo_url=new_photo_url, skills=new_skills_list)
+                                st.session_state.event_response = api_client.trigger_gamification_event(user_id, "PROFILE_UPDATED", {"old_profile": old_profile_for_event, "new_profile": new_profile_for_event})
+                            
                             st.session_state.edit_mode = False
-                            st.cache_data.clear() 
                             st.rerun()
                     with col2:
                         if st.form_submit_button("Отмена", use_container_width=True):
                             st.session_state.edit_mode = False
                             st.rerun()
 
-        profile_data, gamification_data = get_profile_data(user_id)
-        if not profile_data or not gamification_data:
+        if not profile_data or not gamification_data or not achievements_data:
             st.error("Не удалось загрузить данные профиля.")
         else:
             col1, col2 = st.columns([1, 4])
@@ -118,14 +133,14 @@ def show_employee_page():
             with col2:
                 st.header(profile_data.get("name"))
                 st.subheader(profile_data.get("position", "Должность не указана"))
-                st.markdown(f"**Обо мне:** *{profile_data.get('about', 'Информация не заполнена')}*")
+                st.markdown(f"**Обо мне:** {profile_data.get('about') or 'Информация не заполнена.'}")
             st.markdown("---")
             st.subheader("Ключевые навыки")
             skills = profile_data.get("skills", [])
             if skills:
                 st.info(" ".join([f"`{skill.upper()}`" for skill in skills]))
             else:
-                st.warning("Вы еще не добавили ни одного навыка. Нажмите 'Редактировать профиль', чтобы добавить их.")
+                st.warning("Вы еще не добавили ни одного навыка.")
             st.markdown("---")
             st.subheader("Ваш прогресс")
             g_col1, g_col2 = st.columns(2)
@@ -133,13 +148,31 @@ def show_employee_page():
                 st.metric("✨ Очки опыта (XP)", gamification_data.get('xp', 0))
             with g_col2:
                 st.metric("🚀 Уровень", f"Lvl {gamification_data.get('level', 1)}")
-            achievements = gamification_data.get('achievements', [])
-            if achievements:
-                st.write("**Полученные достижения:** " + " ".join([f"🏆 `{ach}`" for ach in achievements]))
+
+            level = gamification_data.get('level', 1)
+            xp = gamification_data.get('xp', 0)
+            xp_current_level = ((level - 1)**2) * 100
+            xp_for_next_level = (level**2) * 100
+            xp_needed = xp_for_next_level - xp_current_level
+            xp_progress_in_level = xp - xp_current_level
+            progress_percent = xp_progress_in_level / xp_needed if xp_needed > 0 else 1.0
+            st.progress(progress_percent, text=f"{xp_progress_in_level} / {xp_needed} XP до следующего уровня")
+
+            st.markdown("##### Ваши награды")
+            all_ach = achievements_data.get('achievements', [])
+            if all_ach:
+                num_columns = len(all_ach)
+                cols = st.columns(num_columns)
+                for i, ach in enumerate(all_ach):
+                    with cols[i % num_columns]:
+                        icon_url = f"http://localhost:8000/assets/icons/{ach['icon']}"
+                        if not ach['unlocked']:
+                            icon_url += "?grayscale=true"
+                        st.image(icon_url, width=80, caption=f"**{ach['name']}**" if ach['unlocked'] else ach['name'])
+            
             with st.expander("⚙️ Настройки профиля"):
                 st.toggle("Скрыть карьерный путь", value=True)
-                st.toggle("Показывать мой уровень", value=True)
-                if st.button("Сохранить настройки", type="secondary"):
+                if st.button("Сохранить настройки", type="secondary"): 
                     st.toast("Настройки сохранены (симуляция)")
 
     # =====================================================================================
@@ -180,12 +213,12 @@ def show_employee_page():
                 st.markdown("---")
 
             if not st.session_state.chat_active and not st.session_state.generated_plan:
-                if st.button("💬 Начать новый диалог с ИИ-консультантом", use_container_width=True, type="primary"):
-                    with st.spinner("Подготовка нового диалога..."):
-                        api_client.clear_chat_history(user_id)
+                if st.button("💬 Начать новый диалог...", use_container_width=True, type="primary"):
+                    api_client.clear_chat_history(user_id)
+                    st.session_state.event_response = api_client.trigger_gamification_event(user_id, "FIRST_CHAT_MESSAGE")
                     st.session_state.chat_active = True
-                    st.session_state.messages = []
                     st.rerun()
+
             elif st.session_state.chat_active:
                 st.subheader("Создание нового плана")
                 chat_container = st.container(height=400, border=True)
@@ -226,6 +259,7 @@ def show_employee_page():
                                 plan_data_response = api_client.generate_final_plan_from_chat(user_id)
                                 if plan_data_response and plan_data_response.get("plan"):
                                     api_client.save_career_plan(user_id, plan_data_response.get("plan"))
+                                    st.session_state.event_response = api_client.trigger_gamification_event(user_id, "CAREER_PLAN_GENERATED")
                                     st.session_state.generated_plan = plan_data_response.get("plan")
                                     st.rerun()
                 with col2:
