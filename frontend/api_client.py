@@ -144,3 +144,7 @@ def get_all_career_plans(user_id: int) -> Optional[Dict]:
     """Получает все сохраненные карьерные планы."""
     return requests.get(f"{BASE_URL}/chat/plans/{user_id}")
 
+@_handle_request_errors
+def clear_chat_history(user_id: int) -> Optional[Dict]:
+    """Удаляет АКТИВНУЮ историю чата для пользователя."""
+    return requests.delete(f"{BASE_URL}/chat/history/{user_id}")

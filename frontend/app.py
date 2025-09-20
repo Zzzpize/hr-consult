@@ -144,6 +144,8 @@ def show_employee_page():
                 st.session_state.chat_active = False
             if 'processing_bot_response' not in st.session_state:
                 st.session_state.processing_bot_response = False
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
 
             with st.spinner("Загрузка сохраненных планов..."):
                 saved_plans_data = api_client.get_all_career_plans(user_id)
@@ -181,16 +183,23 @@ def show_employee_page():
 
             if not st.session_state.chat_active:
                 if st.button("💬 Начать новый диалог с ИИ-консультантом", use_container_width=True, type="primary"):
+                    with st.spinner("Подготовка нового диалога..."):
+                        api_client.clear_chat_history(user_id)
                     st.session_state.chat_active = True
                     st.session_state.messages = []
                     st.rerun()
             else:
                 st.subheader("Создание нового плана")
-
+                
                 chat_container = st.container(height=400, border=True)
 
-                if not st.session_state.get("messages"):
-                    st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
+                if not st.session_state.messages:
+                    with st.spinner("Восстановление диалога..."):
+                        history_data = api_client.get_chat_history(user_id)
+                    if history_data and history_data.get("history"):
+                        st.session_state.messages = history_data["history"]
+                    else:
+                        st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе."}]
 
                 for message in st.session_state.messages:
                     with chat_container.chat_message(message["role"]):
@@ -200,21 +209,19 @@ def show_employee_page():
                     with chat_container.chat_message("assistant"):
                         placeholder = st.empty()
                         placeholder.markdown("Печатаю...")
+                        last_user_message = st.session_state.messages[-1]["content"]
+                        response_data = api_client.get_chat_response(user_id, last_user_message)
                         
-                        last_user_message = next((msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "user"), None)
-
-                        if last_user_message:
-                            response_data = api_client.get_chat_response(user_id, last_user_message)
-                            
-                            if response_data:
-                                bot_response = response_data.get("response", "Извините, произошла ошибка.")
-                            else:
-                                bot_response = "Не удалось получить ответ от сервера."
-
+                        if response_data:
+                            bot_response = response_data.get("response", "Ошибка.")
                             placeholder.markdown(bot_response)
                             st.session_state.messages.append({"role": "assistant", "content": bot_response})
-                            st.session_state.processing_bot_response = False
-                            st.rerun()
+                        else:
+                            placeholder.error("Не удалось получить ответ от сервера.")
+                            st.session_state.messages.append({"role": "assistant", "content": "Ошибка сервера."})
+
+                        st.session_state.processing_bot_response = False
+                        st.rerun()
 
                 if prompt := st.chat_input("Напишите ваше сообщение..."):
                     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -238,7 +245,10 @@ def show_employee_page():
                                 st.error("Не удалось сгенерировать план.")
                 with col2:
                     if st.button("❌ Отменить", use_container_width=True):
+                        with st.spinner("Отмена диалога..."):
+                            api_client.clear_chat_history(user_id)
                         st.session_state.chat_active = False
+                        st.session_state.messages = []
                         st.rerun()
 
     with tab_offers:

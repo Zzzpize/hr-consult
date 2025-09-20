@@ -174,28 +174,23 @@ class RedisClient:
             self.client.sadd(key, *skills)
 
     # --- Методы для Диалоговой Системы ---
-    def get_chat_history(self, user_id: int) -> List[Dict]:
-        """Получает историю чата из Redis List."""
+    def get_active_chat_history(self, user_id: int) -> List[Dict]:
+        """Получает историю ТЕКУЩЕГО диалога из Redis List."""
         if not self.client: return []
-        history_json = self.client.lrange(f"user:{user_id}:chat_history", 0, -1)
+        history_json = self.client.lrange(f"user:{user_id}:active_chat_history", 0, -1)
         return [json.loads(msg) for msg in history_json]
 
-    def add_message_to_history(self, user_id: int, message: Dict):
-        """Добавляет новое сообщение в историю чата."""
+    def add_message_to_active_history(self, user_id: int, message: Dict):
+        """Добавляет новое сообщение в историю ТЕКУЩЕГО диалога."""
         if not self.client: return
-        self.client.lpush(f"user:{user_id}:chat_history", json.dumps(message))
+        self.client.rpush(f"user:{user_id}:active_chat_history", json.dumps(message))
 
-    def get_dialog_state(self, user_id: int) -> Dict:
-        """Получает состояние анкеты-диалога."""
-        if not self.client: return {}
-        state = self.client.hgetall(f"user:{user_id}:dialog_state")
-        return {k: v.lower() == 'true' for k, v in state.items()}
-
-    def update_dialog_state(self, user_id: int, key: str, value: bool):
-        """Обновляет состояние анкеты-диалога."""
+    def clear_active_chat_history(self, user_id: int):
+        """Полностью удаляет историю ТЕКУЩЕГО диалога."""
         if not self.client: return
-        self.client.hset(f"user:{user_id}:dialog_state", key, str(value).lower())
-
+        self.client.delete(f"user:{user_id}:active_chat_history")
+    
+    # --- Методы для сохраненных планов ---
     def save_career_plan(self, user_id: int, plan_data: Dict) -> None:
         """Сохраняет один карьерный план для пользователя."""
         if not self.client: return

@@ -33,8 +33,8 @@ def generate_plan_from_chat(request: ChatPlanRequest):
 
 @router.get("/history/{user_id}")
 def get_chat_history(user_id: int):
-    """Возвращает сохраненную историю чата для пользователя."""
-    history = redis_client.get_chat_history(user_id)
+    """Возвращает активную историю чата для пользователя."""
+    history = redis_client.get_active_chat_history(user_id)
     return {"history": history}
 
 @router.post("/generate-plan")
@@ -56,3 +56,9 @@ def get_all_plans_for_user(user_id: int):
     """Возвращает список всех сохраненных карьерных планов."""
     plans = redis_client.get_all_career_plans(user_id)
     return {"plans": plans}
+
+@router.delete("/history/{user_id}")
+def clear_chat_history(user_id: int):
+    """Удаляет АКТИВНУЮ историю чата для пользователя."""
+    redis_client.clear_active_chat_history(user_id)
+    return {"success": True, "message": "Активная история чата очищена."}
