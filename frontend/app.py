@@ -136,97 +136,110 @@ def show_employee_page():
                 if st.button("Сохранить настройки", type="secondary"):
                     st.toast("Настройки сохранены (симуляция)")
 
-    with tab_plan:
-        st.header("🗺️ Ваши карьерные планы")
-        user_id = st.session_state.user_info.get('user_id')
+        with tab_plan:
+            st.header("🗺️ Ваши карьерные планы")
+            user_id = st.session_state.user_info.get('user_id')
 
-        if 'chat_active' not in st.session_state:
-            st.session_state.chat_active = False
+            if 'chat_active' not in st.session_state:
+                st.session_state.chat_active = False
+            if 'processing_bot_response' not in st.session_state:
+                st.session_state.processing_bot_response = False
 
-        with st.spinner("Загрузка сохраненных планов..."):
-            saved_plans_data = api_client.get_all_career_plans(user_id)
-        
-        if saved_plans_data and saved_plans_data.get("plans"):
-            st.subheader("Сохраненные планы")
-            plans = saved_plans_data["plans"]
-            for i, plan in enumerate(reversed(plans)):
-                title = plan.get('plan_title', f'План {len(plans)-i}')
-                date = plan.get('created_at', 'Неизвестная дата')[:10]
-                with st.expander(f"**{title}** (от {date})"):
+            with st.spinner("Загрузка сохраненных планов..."):
+                saved_plans_data = api_client.get_all_career_plans(user_id)
+            
+            if saved_plans_data and saved_plans_data.get("plans"):
+                st.subheader("Сохраненные планы")
+                plans = saved_plans_data["plans"]
+                for i, plan in enumerate(reversed(plans)):
+                    title = plan.get('plan_title', f'План {len(plans)-i}')
+                    date = plan.get('created_at', 'Неизвестная дата')[:10]
+                    with st.expander(f"**{title}** (от {date})"):
 
-                    st.success(f"**Анализ:** {plan.get('current_analysis', 'Нет данных.')}")
-                    
-                    path = plan.get('recommended_path', {})
-                    st.info(f"**Рекомендация:** {path.get('target_role', 'Не определена')}. "
-                            f"**Обоснование:** {path.get('why_it_fits', 'Нет данных.')}")
-
-                    st.markdown("**Навыки для развития:**")
-                    skill_gap = plan.get("skill_gap", [])
-                    if skill_gap:
-                        for gap in skill_gap:
-                            st.markdown(f"- **`{gap.get('skill')}`** — {gap.get('reason')}")
-                    
-                    st.markdown("**План действий:**")
-                    action_steps = plan.get("actionable_steps", [])
-                    if action_steps:
-                        for step in action_steps:
-                            st.markdown(f"**{step.get('step')}. ({step.get('type')}):** {step.get('description')} ({step.get('timeline')})")
-
-        else:
-            st.info("У вас пока нет сохраненных планов. Создайте свой первый план с помощью ИИ-консультанта!")
-
-        st.markdown("---")
-
-        if not st.session_state.chat_active:
-            if st.button("💬 Начать новый диалог с ИИ-консультантом", use_container_width=True, type="primary"):
-                st.session_state.chat_active = True
-                st.session_state.messages = []
-                st.rerun()
-        else:
-            st.subheader("Создание нового плана")
-
-            chat_container = st.container(height=400, border=True)
-
-            if not st.session_state.get("messages"):
-                 st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
-
-            for message in st.session_state.messages:
-                with chat_container.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if prompt := st.chat_input("Напишите ваше сообщение..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
-
-                with st.spinner("Думаю..."):
-                    response_data = api_client.get_chat_response(user_id, prompt)
-
-                if response_data:
-                    bot_response = response_data.get("response", "Извините, произошла ошибка.")
-                    st.session_state.messages.append({"role": "assistant", "content": bot_response})
-                else:
-                    st.session_state.messages.append({"role": "assistant", "content": "Не удалось получить ответ от сервера."})
-
-                st.rerun()
-
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                if len(st.session_state.messages) > 3:
-                    if st.button("✅ Сгенерировать и сохранить план", use_container_width=True):
-                        with st.spinner("Систематизирую всю информацию и составляю ваш персональный план..."):
-                            plan_data = api_client.generate_final_plan_from_chat(user_id)
+                        st.success(f"**Анализ:** {plan.get('current_analysis', 'Нет данных.')}")
                         
-                        if plan_data and plan_data.get("plan"):
-                            st.success("План успешно создан и сохранен!")
-                            st.balloons()
-                            st.session_state.chat_active = False
-                            st.cache_data.clear() 
-                            st.rerun()
-                        else:
-                            st.error("Не удалось сгенерировать план.")
-            with col2:
-                if st.button("❌ Отменить", use_container_width=True):
-                    st.session_state.chat_active = False
+                        path = plan.get('recommended_path', {})
+                        st.info(f"**Рекомендация:** {path.get('target_role', 'Не определена')}. "
+                                f"**Обоснование:** {path.get('why_it_fits', 'Нет данных.')}")
+
+                        st.markdown("**Навыки для развития:**")
+                        skill_gap = plan.get("skill_gap", [])
+                        if skill_gap:
+                            for gap in skill_gap:
+                                st.markdown(f"- **`{gap.get('skill')}`** — {gap.get('reason')}")
+                        
+                        st.markdown("**План действий:**")
+                        action_steps = plan.get("actionable_steps", [])
+                        if action_steps:
+                            for step in action_steps:
+                                st.markdown(f"**{step.get('step')}. ({step.get('type')}):** {step.get('description')} ({step.get('timeline')})")
+
+            else:
+                st.info("У вас пока нет сохраненных планов. Создайте свой первый план с помощью ИИ-консультанта!")
+
+            st.markdown("---")
+
+            if not st.session_state.chat_active:
+                if st.button("💬 Начать новый диалог с ИИ-консультантом", use_container_width=True, type="primary"):
+                    st.session_state.chat_active = True
+                    st.session_state.messages = []
                     st.rerun()
+            else:
+                st.subheader("Создание нового плана")
+
+                chat_container = st.container(height=400, border=True)
+
+                if not st.session_state.get("messages"):
+                    st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
+
+                for message in st.session_state.messages:
+                    with chat_container.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+                if st.session_state.processing_bot_response:
+                    with chat_container.chat_message("assistant"):
+                        placeholder = st.empty()
+                        placeholder.markdown("Печатаю...")
+                        
+                        last_user_message = next((msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "user"), None)
+
+                        if last_user_message:
+                            response_data = api_client.get_chat_response(user_id, last_user_message)
+                            
+                            if response_data:
+                                bot_response = response_data.get("response", "Извините, произошла ошибка.")
+                            else:
+                                bot_response = "Не удалось получить ответ от сервера."
+
+                            placeholder.markdown(bot_response)
+                            st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                            st.session_state.processing_bot_response = False
+                            st.rerun()
+
+                if prompt := st.chat_input("Напишите ваше сообщение..."):
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    st.session_state.processing_bot_response = True
+                    st.rerun()
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    if len(st.session_state.messages) > 3:
+                        if st.button("✅ Сгенерировать и сохранить план", use_container_width=True):
+                            with st.spinner("Систематизирую всю информацию и составляю ваш персональный план..."):
+                                plan_data = api_client.generate_final_plan_from_chat(user_id)
+                            
+                            if plan_data and plan_data.get("plan"):
+                                st.success("План успешно создан и сохранен!")
+                                st.balloons()
+                                st.session_state.chat_active = False
+                                st.cache_data.clear()
+                                st.rerun()
+                            else:
+                                st.error("Не удалось сгенерировать план.")
+                with col2:
+                    if st.button("❌ Отменить", use_container_width=True):
+                        st.session_state.chat_active = False
+                        st.rerun()
 
     with tab_offers:
         st.header("📬 Ваши предложения")
