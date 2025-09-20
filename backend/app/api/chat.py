@@ -25,12 +25,32 @@ def handle_chat_message(request: ChatMessageRequest):
         return {"response": bot_response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
 
 @router.post("/generate-plan")
-def generate_plan_from_chat(request: ChatPlanRequest):
-    """Принимает user_id и генерирует JSON-план на основе истории чата."""
+def generate_plan_and_update_profile(request: ChatPlanRequest):
+    """
+    Генерирует план, обновляет профиль на основе чата, но НЕ сохраняет сам план.
+    """
     try:
-        plan_json = llm_service.generate_final_plan_from_chat(request.user_id)
+        user_id = request.user_id
+        history = redis_client.get_active_chat_history(user_id)
+        if not history:
+            raise HTTPException(status_code=404, detail="Активная история чата не найдена.")
+
+        print(f"Extracting profile data for user {user_id} from chat...")
+        extracted_data = llm_service.extract_profile_data_from_chat(history)
+        if extracted_data:
+            profile_update = {k: v for k, v in extracted_data.items() if k in ["name", "position", "about"] and v}
+            if profile_update:
+                redis_client.update_user_profile(user_id, profile_update)
+            if extracted_data.get("skills"):
+                redis_client.update_user_skills(user_id, extracted_data["skills"])
+            print(f"Profile for user {user_id} updated with data: {extracted_data}")
+
+        plan_json = llm_service.generate_final_plan_from_chat(user_id)
+        
         return {"plan": plan_json}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -51,9 +51,9 @@ def show_employee_page():
         response = st.session_state.event_response
         if response.get("unlocked_achievements"):
             for ach in response["unlocked_achievements"]:
-                st.success(f"🏆 Новое достижение: **{ach['name']}**!")
+                st.toast(f"🏆 Новое достижение: {ach['name']}!", icon="🏆")
                 st.balloons()
-                time.sleep(2.5)
+
         if response.get("xp_added", 0) > 0:
             st.toast(f"✨ +{response['xp_added']} XP!")
 
@@ -261,6 +261,8 @@ def show_employee_page():
                                     api_client.save_career_plan(user_id, plan_data_response.get("plan"))
                                     st.session_state.event_response = api_client.trigger_gamification_event(user_id, "CAREER_PLAN_GENERATED")
                                     st.session_state.generated_plan = plan_data_response.get("plan")
+                                    st.session_state.chat_active = False
+                                    st.cache_data.clear()
                                     st.rerun()
                 with col2:
                     if st.button("❌ Отменить", use_container_width=True):
