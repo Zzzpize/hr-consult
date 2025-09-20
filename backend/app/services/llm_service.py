@@ -65,10 +65,6 @@ def exchange(messages: list, temperature: float = 0.8, max_tokens: int = 400):
         resp = client.chat.completions.create(
             model = "Qwen2.5-72B-Instruct-AWQ",
             messages=messages,
-            # messages = [
-            #     {"role": "system", "content": system_prompt},
-            #     {"role": "user", "content": user_text},
-            # ],
             temperature = temperature,
             max_tokens = max_tokens,
         )
@@ -94,9 +90,6 @@ def generate_final_plan_from_chat(user_id: int) -> Dict:
     plan_data['created_at'] = datetime.now(timezone.utc).isoformat()
     redis_client.clear_active_chat_history(user_id)
     return plan_data
-    #redis_client.add_message_to_history(user_id, {"role": "system", "content": answer})
-    #answer = exchange(system_prompt_plan, answer)
-    return json.loads(answer.strip('"').replace('\\"', '"'))
 
 def vectorize_all_users_in_redis():
     print("Векторизация пользователей (пока не реализована)...")
