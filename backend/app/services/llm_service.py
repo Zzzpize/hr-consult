@@ -76,6 +76,22 @@ def exchange(messages: list, temperature: float = 1, max_tokens: int = 2000, res
 def get_next_chat_response(user_id: int, user_prompt: str) -> str:
     history = redis_client.get_active_chat_history(user_id)
     history.append({"role": "user", "content": user_prompt})
+    profile_info = ""
+    if len(history) == 1: 
+        profile = redis_client.get_user_profile(user_id)
+        skills = redis_client.get_user_skills(user_id)
+        if profile and profile.get('about') and skills:
+            profile_info = (
+                "\n\nВАЖНАЯ ИНФОРМАЦИЯ: У этого пользователя уже заполнен профиль. "
+                "Твоя задача — вежливо предложить ему построить карьерный план на основе уже имеющихся данных, "
+                "но также спросить, не хочет ли он что-то уточнить или изменить в своих данных перед началом."
+            )
+        else:
+            profile_info = (
+                "\n\nВАЖНАЯ ИНФОРМАЦИЯ: Профиль этого пользователя пуст. "
+                "Твоя первоочередная задача — собрать информацию по 5 ключевым пунктам, чтобы в конце предложить ему автоматически заполнить профиль."
+            )
+    contextual_system_prompt = system_prompt_info + profile_info
     messages_for_llm = [{"role": "system", "content": system_prompt_info}] + history
     redis_client.add_message_to_active_history(user_id, {"role": "user", "content": user_prompt})
     answer = exchange(messages_for_llm)
@@ -108,3 +124,21 @@ def find_similar_users(prompt: str, top_k: int = 5):
         {"user_id": 1, "score": 0.99},
         {"user_id": 2, "score": 0.85},
     ]
+
+def extract_profile_data_from_chat(history: List[Dict]) -> Dict:
+    """
+    Извлекает структурированные данные (ФИО, навыки и т.д.) из диалога.
+    """
+    extraction_prompt = (
+        "Проанализируй предоставленный диалог между пользователем и карьерным консультантом. "
+        "Твоя задача — извлечь из ответов пользователя следующую информацию и вернуть ее в формате JSON: "
+        "`name` (string, полное ФИО), `position` (string, текущая должность), "
+        "`about` (string, краткое саммари о пользователе на основе его ответов), "
+        "`skills` (list of strings, список ключевых навыков). "
+        "Если какую-то информацию найти не удалось, оставь соответствующее поле пустым. "
+        "Верни только JSON объект, без лишних слов."
+    )
+    
+    messages_for_llm = history + [{"role": "system", "content": extraction_prompt}]
+
+    return json.loads(exchange(messages_for_llm, response_format={"type": "json_object"}))
