@@ -118,9 +118,17 @@ def get_user_skills(user_id: int) -> Optional[List[str]]:
     return profile.get('skills', []) if profile else []
 
 @_handle_request_errors
-def update_user_profile(user_id: int, nickname: str, about: str, skills: List[str]) -> Optional[Dict[str, Any]]:
+def update_user_profile(user_id: int, name: str, nickname: str, about: str, photo_url: str, skills: List[str]) -> Optional[Dict[str, Any]]:
     """Обновляет профиль пользователя."""
-    payload = {"nickname": nickname, "about": about, "skills": skills}
+    payload = {
+        "name": name,
+        "nickname": nickname,
+        "about": about,
+        "photo_url": photo_url,
+        "skills": skills
+    }
+    payload = {k: v for k, v in payload.items() if v is not None}
+    
     response = requests.put(f"{BASE_URL}/profile/{user_id}", json=payload)
     return response
 
@@ -153,3 +161,9 @@ def clear_chat_history(user_id: int) -> Optional[Dict]:
 def import_profile_from_chat(user_id: int) -> Optional[Dict[str, Any]]:
     """Запускает импорт данных из чата в профиль."""
     return requests.post(f"{BASE_URL}/profile/{user_id}/import-from-chat")
+
+@_handle_request_errors
+def save_career_plan(user_id: int, plan_data: Dict) -> Optional[Dict]:
+    """Отправляет сгенерированный план на сохранение в Redis."""
+    return requests.post(f"{BASE_URL}/chat/save-plan", json={"user_id": user_id, "plan_data": plan_data})
+

@@ -75,11 +75,16 @@ def show_employee_page():
                 st.subheader("Редактирование профиля")
                 profile_data_to_edit, _ = get_profile_data(user_id)
                 with st.form("edit_profile_form"):
+                    name_val = profile_data_to_edit.get("name", "")
                     nickname_val = profile_data_to_edit.get("nickname", "")
+                    photo_url_val = profile_data_to_edit.get("photo_url", "")
                     about_val = profile_data_to_edit.get("about", "")
                     skills_list = profile_data_to_edit.get("skills", [])
                     skills_val = ", ".join(skills_list)
-                    new_nickname = st.text_input("Никнейм", value=nickname_val)
+
+                    new_name = st.text_input("Ваше ФИО", value=name_val)
+                    new_nickname = st.text_input("Никнейм (логин)", value=nickname_val)
+                    new_photo_url = st.text_input("URL аватара", value=photo_url_val, help="Вставьте прямую ссылку на изображение (например, с Imgur, GitHub).")
                     new_about = st.text_area("Обо мне", value=about_val, height=150)
                     new_skills_str = st.text_input("Навыки (через запятую)", value=skills_val)
                     col1, col2 = st.columns([1,1])
@@ -87,9 +92,16 @@ def show_employee_page():
                         if st.form_submit_button("Сохранить", use_container_width=True, type="primary"):
                             new_skills_list = [skill.strip() for skill in new_skills_str.split(",") if skill.strip()]
                             with st.spinner("Сохранение..."):
-                                api_client.update_user_profile(user_id, new_nickname, new_about, new_skills_list)
+                                api_client.update_user_profile(user_id, 
+                                    name=new_name, 
+                                    nickname=new_nickname, 
+                                    about=new_about, 
+                                    photo_url=new_photo_url,
+                                    skills=new_skills_list
+                                )
                             st.toast("Профиль успешно обновлен!")
                             st.session_state.edit_mode = False
+                            st.cache_data.clear() 
                             st.rerun()
                     with col2:
                         if st.form_submit_button("Отмена", use_container_width=True):
@@ -207,11 +219,12 @@ def show_employee_page():
                     st.rerun()
 
                 if st.session_state.messages and "заполнить профиль автоматически" in st.session_state.messages[-1].get("content", "").lower():
-                    if st.button("🤖 Да, заполнить мой профиль на основе диалога", use_container_width=True):
+                    if st.button("🤖 Да, заполнить мой профиль на основе диалога!", use_container_width=True, type="primary"):
                         with st.spinner("Анализирую диалог и обновляю ваш профиль..."):
                             response = api_client.import_profile_from_chat(user_id)
+                        
                         if response and response.get("success"):
-                            st.success("Ваш профиль успешно обновлен!")
+                            st.success("Ваш профиль успешно обновлен! Можете проверить его на вкладке 'Мой профиль'.")
                             st.cache_data.clear()
                         else:
                             st.error("Не удалось обновить профиль.")
@@ -223,6 +236,7 @@ def show_employee_page():
                             with st.spinner("Систематизирую всю информацию..."):
                                 plan_data_response = api_client.generate_final_plan_from_chat(user_id)
                                 if plan_data_response and plan_data_response.get("plan"):
+                                    api_client.save_career_plan(user_id, plan_data_response.get("plan"))
                                     st.session_state.generated_plan = plan_data_response.get("plan")
                                     st.rerun()
                 with col2:

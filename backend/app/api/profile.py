@@ -7,6 +7,8 @@ from ..services import llm_service
 router = APIRouter(prefix="/profile", tags=["User Profile"])
 
 class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    photo_url: Optional[str] = None
     nickname: Optional[str] = None
     about: Optional[str] = None
     skills: Optional[List[str]] = None
@@ -15,17 +17,15 @@ class ProfileUpdateRequest(BaseModel):
 def update_user_profile(user_id: int, profile_data: ProfileUpdateRequest):
     """Обновляет редактируемые поля профиля пользователя."""
 
-    update_data = {}
-    if profile_data.nickname is not None:
-        update_data['nickname'] = profile_data.nickname
-    if profile_data.about is not None:
-        update_data['about'] = profile_data.about
-    
+    update_data = profile_data.dict(exclude_unset=True)
+
+    skills_to_update = update_data.pop("skills", None)
+
     if update_data:
         redis_client.update_user_profile(user_id, update_data)
 
-    if profile_data.skills is not None:
-        redis_client.update_user_skills(user_id, profile_data.skills)
+    if skills_to_update is not None:
+        redis_client.update_user_skills(user_id, skills_to_update)
 
     return {"success": True, "updated_user_id": user_id}
 
@@ -43,14 +43,10 @@ def import_data_from_chat(user_id: int):
     if not extracted_data:
         raise HTTPException(status_code=500, detail="Не удалось извлечь данные из диалога.")
 
-    profile_update = {}
-    if extracted_data.get("name"):
-        profile_update["name"] = extracted_data["name"]
-    if extracted_data.get("position"):
-        profile_update["position"] = extracted_data["position"]
-    if extracted_data.get("about"):
-        profile_update["about"] = extracted_data["about"]
-    
+    profile_update = {
+        key: value for key, value in extracted_data.items() 
+        if key in ["name", "position", "about"] and value
+    }
     if profile_update:
         redis_client.update_user_profile(user_id, profile_update)
 

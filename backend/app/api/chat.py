@@ -13,6 +13,10 @@ class ChatMessageRequest(BaseModel):
 class ChatPlanRequest(BaseModel):
     user_id: int
 
+class CareerPlanSaveRequest(BaseModel):
+    user_id: int
+    plan_data: Dict[str, Any]
+    
 @router.post("/message")
 def handle_chat_message(request: ChatMessageRequest):
     """Принимает последнее сообщение пользователя и возвращает ответ бота."""
@@ -31,6 +35,15 @@ def generate_plan_from_chat(request: ChatPlanRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/save-plan")
+def save_career_plan(request: CareerPlanSaveRequest):
+    """Сохраняет предоставленный карьерный план в Redis."""
+    try:
+        redis_client.save_career_plan(request.user_id, request.plan_data)
+        return {"success": True, "message": "План успешно сохранен."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @router.get("/history/{user_id}")
 def get_chat_history(user_id: int):
     """Возвращает активную историю чата для пользователя."""
