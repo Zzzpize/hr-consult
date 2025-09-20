@@ -2,6 +2,7 @@ import json
 from typing import Dict
 from app.core.redis_client import redis_client
 from openai import OpenAI
+from datetime import datetime, timezone
 
 API_KEY = "sk-LqCf11ej9dj70ObUG956eQ"
 BASE_URL = "https://llm.t1v.scibox.tech/v1"
@@ -9,6 +10,7 @@ BASE_URL = "https://llm.t1v.scibox.tech/v1"
 system_prompt_info = "Ты — дружелюбный и эмпатичный карьерный консультант 'Навигатор'. Говорить, кто ты – НЕ НУЖНО. Приветствовать человека 'Привет' или 'Здравствуйте' – НЕ НУЖНО. Сразу переходи к делу. Твоя цель — узнать его 1) ФИО 2) отдел, должность и стаж работы 3) навыки (hard и soft skills) 4) последние 2 реализованных проекта 5) амбиции (вакансия, на которую хочет попасть пользователь). Вся уже собранная информация будет прикреплена последним абзацем в виде словаря (тебя будут интересовать элементы с ключом 'role' = 'user', 5 пунктов: ФИО, отдел/должность/стаж, навыки, проекты и амбиции). Информацию о пользователе ты ищешь по принципу первого вхождения: если, например, пользователь уже указал свое имя, ответив на твой вопрос, а затем снова написал какое-то другое, то ты не обращаешь внимания и обращаешься по первому имени. И так со всеми пунктами. Если ты видишь, что не все 5 пунктов закрыты полностью – задаешь пользователю уточняющие вопросы до тех пор, пока не соберется полная база знаний (в случае ФИО, например, нужно всегда просить абсолютно полное ФИО). Не переспрашивай ту информацию, что ты уже знаешь. Как только ты понимаешь, что база знаний полна информации по всем 5 пунктам – предложи ему заполнить профиль автоматически. Будь вежливым, но не жеманным и льстительным. При необходимости обращайся по имени (если ты его уже знаешь). Вот текущая история общения с пользователем, где ты можешь найти информацию о нем:\n"
 
 system_prompt_analyze = "Ты — дружелюбный и эмпатичный карьерный консультант 'Навигатор'. Говорить, кто ты – НЕ НУЖНО. Приветствовать человека 'Привет' или 'Здравствуйте' – НЕ НУЖНО. Сразу переходи к делу. Твоя цель — построить последовательный карьерный план на основании известной о пользователе информации. Вся уже собранная информация будет прикреплена последним абзацем в виде словаря (тебя будут интересовать элементы с ключом 'role' = 'user', 5 пунктов: ФИО, отдел/должность/стаж, навыки, проекты и амбиции). Информацию о пользователе ты ищешь по принципу первого вхождения: если, например, пользователь уже указал свое имя, ответив на твой вопрос, а затем снова написал какое-то другое, то ты не обращаешь внимания и обращаешься по первому имени. И так со всеми пунктами. Будь вежливым, но не жеманным и льстительным. При необходимости обращайся по имени. Вот текущая история общения с пользователем, где ты можешь найти информацию о нем:\n"
+
 
 example_plan = {
   "plan_id": "plan_1726834988_user_3", 
@@ -55,17 +57,18 @@ example_plan = {
   ]
 }
 
-system_prompt_plan = "Вычлени из данного ответа всю необходимую информацию, чтобы полностью заполнить все поля, как в данном примере:\n{example_plan}\nВерни мне одной строкой без членения на абзацы аналогичный json-подобный объект, без лишних комментариев\n"
+system_prompt_plan = "Вычлени из данного ответа всю необходимую информацию, чтобы полностью заполнить все поля, как в данном примере:\n{example_plan}\nВерни мне одной строкой аналогичный json-подобный объект, без лишних комментариев\n"
 
-def exchange(system_prompt: str, user_text: str, temperature: float = 1, max_tokens: int = 2000):
+def exchange(messages: list, temperature: float = 0.8, max_tokens: int = 400):
     try:
         client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
         resp = client.chat.completions.create(
             model = "Qwen2.5-72B-Instruct-AWQ",
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_text},
-            ],
+            messages=messages,
+            # messages = [
+            #     {"role": "system", "content": system_prompt},
+            #     {"role": "user", "content": user_text},
+            # ],
             temperature = temperature,
             max_tokens = max_tokens,
         )
@@ -74,18 +77,26 @@ def exchange(system_prompt: str, user_text: str, temperature: float = 1, max_tok
         return f"\n--- ПРОИЗОШЛА ОШИБКА ---\n{e}"
     
 def get_next_chat_response(user_id: int, user_prompt: str) -> str:
-    history = str(redis_client.get_chat_history(user_id))
-    redis_client.add_message_to_history(user_id, {"role": "user", "content": user_prompt})
-    answer = exchange(system_prompt_info + history, user_prompt)
-    redis_client.add_message_to_history(user_id, {"role": "system", "content": answer})
+    history = redis_client.get_active_chat_history(user_id)
+    history.append({"role": "user", "content": user_prompt})
+    messages_for_llm = [{"role": "system", "content": system_prompt_info}] + history
+    redis_client.add_message_to_active_history(user_id, {"role": "user", "content": user_prompt})
+    answer = exchange(messages_for_llm)
+    redis_client.add_message_to_active_history(user_id, {"role": "assistant", "content": answer})
     return answer
 
 def generate_final_plan_from_chat(user_id: int) -> Dict:
-    history = str(redis_client.get_chat_history(user_id))
-    answer = exchange(system_prompt_analyze + history, "")
-    redis_client.add_message_to_history(user_id, {"role": "system", "content": answer})
-    answer = exchange(system_prompt_plan, answer)
-    return json.loads(answer)
+    history = redis_client.get_active_chat_history(user_id)
+    messages_for_llm = [{"role": "system", "content": system_prompt_analyze}] + history
+    answer = exchange(messages_for_llm)
+    plan_data = json.loads(answer)
+    plan_data['plan_id'] = f"plan_{int(datetime.now().timestamp())}_user_{user_id}"
+    plan_data['created_at'] = datetime.now(timezone.utc).isoformat()
+    redis_client.clear_active_chat_history(user_id)
+    return plan_data
+    #redis_client.add_message_to_history(user_id, {"role": "system", "content": answer})
+    #answer = exchange(system_prompt_plan, answer)
+    return json.loads(answer.strip('"').replace('\\"', '"'))
 
 def vectorize_all_users_in_redis():
     print("Векторизация пользователей (пока не реализована)...")
