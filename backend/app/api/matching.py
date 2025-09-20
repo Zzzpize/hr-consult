@@ -1,7 +1,8 @@
-# backend/app/api/matching.py
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List
+from ..services import llm_service
+from ..core.redis_client import redis_client
 
 router = APIRouter(
     prefix="/matching",
@@ -15,32 +16,32 @@ class MatchResult(BaseModel):
     user_id: int
     name: str
     position: str
-    score: float # от 0 до 1
+    score: float
 
 @router.post("/candidates", response_model=List[MatchResult])
 def match_candidates(request: MatchRequest):
-    """
-    Подбирает кандидатов по текстовому промпту (заглушка).
-    Возвращает жестко закодированный список подходящих сотрудников.
-    """
-    # промпт был "ищу опытного питониста"
-    return [
-        {
-            "user_id": 1,
-            "name": "Иван Иванов",
-            "position": "Junior Python Developer",
-            "score": 0.92
-        },
-        {
-            "user_id": 5, # Несуществующий для простоты
-            "name": "Сергей Васильев",
-            "position": "Python Developer",
-            "score": 0.87
-        },
-        {
-            "user_id": 2,
-            "name": "Анна Сидорова",
-            "position": "Frontend Developer",
-            "score": 0.65 # Нашлась, потому что у нее в опыте был Python-проект
-        }
-    ]
+    """Подбирает кандидатов, используя ML-сервис."""
+    
+    similar_users = llm_service.find_similar_users(request.prompt)
+
+    results = []
+    for user_match in similar_users:
+        profile = redis_client.get_user_profile(user_match['user_id'])
+        if profile:
+            results.append({
+                "user_id": profile['id'],
+                "name": profile.get('name', 'N/A'),
+                "position": profile.get('position', 'N/A'),
+                "score": user_match['score']
+            })
+    
+    return results
+
+@router.post("/vectorize-all")
+def vectorize_all_users():
+    """Запускает процесс векторизации всех пользователей в базе."""
+    try:
+        llm_service.vectorize_all_users_in_redis()
+        return {"status": "ok", "message": "Процесс векторизации запущен."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
