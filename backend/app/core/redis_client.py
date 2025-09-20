@@ -196,4 +196,16 @@ class RedisClient:
         if not self.client: return
         self.client.hset(f"user:{user_id}:dialog_state", key, str(value).lower())
 
+    def save_career_plan(self, user_id: int, plan_data: Dict) -> None:
+        """Сохраняет один карьерный план для пользователя."""
+        if not self.client: return
+        self.client.rpush(f"user:{user_id}:career_plans", json.dumps(plan_data))
+
+    def get_all_career_plans(self, user_id: int) -> List[Dict]:
+        """Получает все сохраненные карьерные планы для пользователя."""
+        if not self.client: return []
+        plans_json = self.client.lrange(f"user:{user_id}:career_plans", 0, -1)
+        return [json.loads(p) for p in plans_json]
+
+
 redis_client = RedisClient()
