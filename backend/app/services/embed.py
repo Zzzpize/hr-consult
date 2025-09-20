@@ -9,23 +9,23 @@ texts_to_embed = [
     "Солнечная погода на пляже."
 ]
 
-try:
-    client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
-    print(f"Отправляю {len(texts_to_embed)} текстов на векторизацию моделью 'bge-m3'...")
-    emb_response = client.embeddings.create(
-        model = "bge-m3",
-        input = texts_to_embed
-    )
-    num_embeddings = len(emb_response.data)
-    print(f"Получено эмбеддингов: {num_embeddings}")
-    if num_embeddings > 0:
-        vector_dimension = len(emb_response.data[0].embedding)
-        print(f"Размерность каждого вектора (эмбеддинга): {vector_dimension}")
-        print(f"Пример части первого вектора: {emb_response.data[0].embedding[:5]}")
-    if num_embeddings == len(texts_to_embed):
-        print("Тест эмбеддинг-модели прошел успешно!")
-    else:
-        print("Тест прошел, но количество эмбеддингов не совпадает с количеством текстов!")
-
-except Exception as e:
-    print(f"\n--- ПРОИЗОШЛА ОШИБКА ---{e}")
+def exchange(texts: list[str]) -> list[list[float]]:
+    try:
+        client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
+        print(f"Отправляю {len(texts_to_embed)} текстов на векторизацию моделью 'bge-m3'...")
+        emb_response = client.embeddings.create(
+            model = "bge-m3",
+            input = texts_to_embed
+        )
+        num_embeddings = len(emb_response.data)
+        print(f"Получено эмбеддингов: {num_embeddings}")
+        if num_embeddings > 0:
+            vector_dimension = len(emb_response.data[0].embedding)
+            print(f"Размерность каждого вектора (эмбеддинга): {vector_dimension}")
+            print(f"Пример части первого вектора: {emb_response.data[0].embedding[:5]}")
+        if num_embeddings == len(texts_to_embed):
+            print("Тест эмбеддинг-модели прошел успешно!")
+        else:
+            print("Тест прошел, но количество эмбеддингов не совпадает с количеством текстов!")
+    except Exception as e:
+        print(f"\n--- ПРОИЗОШЛА ОШИБКА ---{e}")
