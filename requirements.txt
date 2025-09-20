@@ -1,0 +1,8 @@
+openai
+redis
+streamlit
+fastapi
+uvicorn[standard]
+requests
+streamlit-cookies-manager
+extra-streamlit-components
