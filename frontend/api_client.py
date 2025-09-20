@@ -138,3 +138,9 @@ def get_chat_response(user_id: int, message: str) -> Optional[Dict]:
 def generate_final_plan_from_chat(user_id: int) -> Optional[Dict]:
     """Отправляет запрос на генерацию финального плана на основе истории чата."""
     return requests.post(f"{BASE_URL}/chat/generate-plan", json={"user_id": user_id})
+
+@_handle_request_errors
+def get_all_career_plans(user_id: int) -> Optional[Dict]:
+    """Получает все сохраненные карьерные планы."""
+    return requests.get(f"{BASE_URL}/chat/plans/{user_id}")
+
