@@ -127,14 +127,14 @@ def update_user_profile(user_id: int, nickname: str, about: str, skills: List[st
 @_handle_request_errors
 def get_chat_history(user_id: int) -> Optional[Dict]:
     """Получает историю чата для пользователя."""
-    return requests.get(f"{BASE_URL}/chat/history/{user_id}").json()
+    return requests.get(f"{BASE_URL}/chat/history/{user_id}")
 
 @_handle_request_errors
 def get_chat_response(user_id: int, message: str) -> Optional[Dict]:
     """Отправляет сообщение в чат и получает ответ бота."""
-    return requests.post(f"{BASE_URL}/chat/message", json={"user_id": user_id, "message": message}).json()
+    return requests.post(f"{BASE_URL}/chat/message", json={"user_id": user_id, "message": message})
 
 @_handle_request_errors
 def generate_final_plan_from_chat(user_id: int) -> Optional[Dict]:
     """Отправляет запрос на генерацию финального плана на основе истории чата."""
-    return requests.post(f"{BASE_URL}/chat/generate-plan", json={"user_id": user_id}).json()
+    return requests.post(f"{BASE_URL}/chat/generate-plan", json={"user_id": user_id})
