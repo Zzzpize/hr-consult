@@ -97,7 +97,6 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
             )
 
     contextual_system_prompt = system_prompt_info + profile_info
-    
     messages_for_llm = [{"role": "system", "content": contextual_system_prompt}] + history
     redis_client.add_message_to_active_history(user_id, {"role": "user", "content": user_prompt})
     answer = exchange(messages_for_llm)
