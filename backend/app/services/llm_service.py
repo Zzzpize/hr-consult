@@ -87,16 +87,18 @@ def cosine_similarity(vec1, vec2):
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
 def find_best_career_plan(career_plans: List[Dict], user_profile: Dict) -> Dict:
-    user_text = " ".join(user_profile["skills"])
+    user_text = " ".join(user_profile.get("skills", []))
     user_vec = get_embedding(user_text)
     best_match, best_score = None, -1
     for plan in career_plans:
-        plan_text = f"{plan['target_role']} {plan['description']}"
+        skills_text = " ".join([s["skill"] for s in plan.get("skill_gap", [])])
+        steps_text = " ".join([s["description"] for s in plan.get("actionable_steps", [])])
+        plan_text = f"{plan.get('plan_title', '')} {skills_text} {steps_text}"
         plan_vec = get_embedding(plan_text)
         score = cosine_similarity(user_vec, plan_vec)
         if score > best_score:
             best_match, best_score = plan, score
-    return best_match["target_role"]
+    return best_match
     
 def get_next_chat_response(user_id: int, user_prompt: str) -> str:
     history = redis_client.get_active_chat_history(user_id)
@@ -134,7 +136,8 @@ def generate_final_plan_from_chat(user_id: int) -> Dict:
     user_profile = extract_profile_data_from_chat(history)
     best_plan = find_best_career_plan(career_plans, user_profile)
     final_system_prompt = (
-        f"{system_prompt_analyze}{user_profile}\nВот наиболее подходящая карьерная цель для этого пользователя:\n{best_plan}"
+        f"{system_prompt_analyze}{user_profile}\n"
+        f"Вот наиболее подходящий карьерный план для этого пользователя:\n{json.dumps(best_plan, ensure_ascii = False)}"
         "После анализа, твоя задача — вернуть результат ИСКЛЮЧИТЕЛЬНО в формате JSON, "
         "без каких-либо вводных слов или комментариев. "
         f"Структура JSON должна строго соответствовать этому примеру: {json.dumps(example_plan, ensure_ascii = False)}\n\n"
