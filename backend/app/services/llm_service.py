@@ -80,17 +80,24 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
         profile = redis_client.get_user_profile(user_id)
         skills = redis_client.get_user_skills(user_id)
         if profile and profile.get('about') and skills:
+            profile_summary = (
+                f"Имя: {profile.get('name', 'неизвестно')}, "
+                f"Должность: {profile.get('position', 'неизвестна')}, "
+                f"Навыки: {', '.join(skills)}"
+            )
             profile_info = (
-                "\n\nВАЖНАЯ ИНФОРМАЦИЯ: У этого пользователя уже заполнен профиль. "
-                "Твоя задача — вежливо предложить ему построить карьерный план на основе уже имеющихся данных, "
-                "но также спросить, не хочет ли он что-то уточнить или изменить в своих данных перед началом."
+                f"\n\nВАЖНАЯ ИНФОРМАЦИЯ: У этого пользователя уже заполнен профиль. Вот краткая сводка: {profile_summary}. "
+                "Твоя задача — вежливо подтвердить, что ты видишь эти данные, и предложить построить карьерный план на их основе. "
+                "Обязательно спроси, не хочет ли пользователь что-то уточнить или изменить в своих данных перед началом анализа."
             )
         else:
             profile_info = (
                 "\n\nВАЖНАЯ ИНФОРМАЦИЯ: Профиль этого пользователя пуст. "
-                "Твоя первоочередная задача — собрать информацию по 5 ключевым пунктам, чтобы в конце предложить ему автоматически заполнить профиль."
+                "Твоя первоочередная задача — начать диалог для сбора информации по 5 ключевым пунктам, чтобы в конце предложить ему автоматически заполнить профиль."
             )
+
     contextual_system_prompt = system_prompt_info + profile_info
+    
     messages_for_llm = [{"role": "system", "content": contextual_system_prompt}] + history
     redis_client.add_message_to_active_history(user_id, {"role": "user", "content": user_prompt})
     answer = exchange(messages_for_llm)
