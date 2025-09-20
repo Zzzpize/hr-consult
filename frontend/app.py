@@ -79,11 +79,9 @@ def show_employee_page():
                     about_val = profile_data_to_edit.get("about", "")
                     skills_list = profile_data_to_edit.get("skills", [])
                     skills_val = ", ".join(skills_list)
-
                     new_nickname = st.text_input("Никнейм", value=nickname_val)
                     new_about = st.text_area("Обо мне", value=about_val, height=150)
                     new_skills_str = st.text_input("Навыки (через запятую)", value=skills_val)
-
                     col1, col2 = st.columns([1,1])
                     with col1:
                         if st.form_submit_button("Сохранить", use_container_width=True, type="primary"):
@@ -104,7 +102,7 @@ def show_employee_page():
         else:
             col1, col2 = st.columns([1, 4])
             with col1:
-                st.image(profile_data.get("photo_url", ""), use_container_width=True, caption=profile_data.get("nickname"))
+                st.image(profile_data.get("photo_url", ""), use_column_width=True, caption=profile_data.get("nickname"))
             with col2:
                 st.header(profile_data.get("name"))
                 st.subheader(profile_data.get("position", "Должность не указана"))
@@ -204,7 +202,6 @@ def show_employee_page():
                         with st.spinner("Систематизирую всю информацию..."):
                             plan_data_response = api_client.generate_final_plan_from_chat(user_id)
                             if plan_data_response and plan_data_response.get("plan"):
-                                api_client.save_career_plan(user_id, plan_data_response.get("plan"))
                                 st.session_state.generated_plan = plan_data_response.get("plan")
                                 st.rerun()
             with col2:
@@ -233,7 +230,7 @@ def show_employee_page():
                 st.session_state.generated_plan = None
                 st.cache_data.clear()
                 st.rerun()
-    
+
     # =====================================================================================
     # --- ВКЛАДКА 3: ОФФЕРЫ ---
     # =====================================================================================
