@@ -81,7 +81,6 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
     redis_client.add_message_to_active_history(user_id, {"role": "assistant", "content": answer})
     return answer
 
-
 def generate_final_plan_from_chat(user_id: int) -> Dict:
     history = redis_client.get_active_chat_history(user_id)
     final_system_prompt = (
