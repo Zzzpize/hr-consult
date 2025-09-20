@@ -1,5 +1,5 @@
 import json
-from typing import Dict
+from typing import Dict, List
 from app.core.redis_client import redis_client
 from openai import OpenAI
 from datetime import datetime, timezone
@@ -58,6 +58,8 @@ example_plan = {
 
 system_prompt_plan = "Вычлени из данного ответа всю необходимую информацию, чтобы полностью заполнить все поля, как в данном примере:\n{example_plan}\nВерни мне одной строкой аналогичный json-подобный объект, без лишних комментариев\n"
 
+with open("career_plans.json", "r") as f: career_plans = json.load(f)
+
 def exchange(messages: list, temperature: float = 1, max_tokens: int = 2000, response_format = None):
     try:
         client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
@@ -91,7 +93,7 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
                 "Твоя первоочередная задача — собрать информацию по 5 ключевым пунктам, чтобы в конце предложить ему автоматически заполнить профиль."
             )
     contextual_system_prompt = system_prompt_info + profile_info
-    messages_for_llm = [{"role": "system", "content": system_prompt_info}] + history
+    messages_for_llm = [{"role": "system", "content": contextual_system_prompt}] + history
     redis_client.add_message_to_active_history(user_id, {"role": "user", "content": user_prompt})
     answer = exchange(messages_for_llm)
     redis_client.add_message_to_active_history(user_id, {"role": "assistant", "content": answer})
@@ -104,7 +106,7 @@ def generate_final_plan_from_chat(user_id: int) -> Dict:
         "После анализа, твоя задача — вернуть результат ИСКЛЮЧИТЕЛЬНО в формате JSON, без каких-либо вводных слов или комментариев. "
         f"Структура JSON должна строго соответствовать этому примеру: {json.dumps(example_plan, ensure_ascii=False)}"
     )
-    messages_for_llm = [{"role": "system", "content": final_system_prompt}] + history
+    messages_for_llm = [{"role": "system", "content": final_system_prompt}] + history + career_plans
     answer = exchange(messages_for_llm, response_format={"type": "json_object"})
     plan_data = json.loads(answer)
     plan_data['plan_id'] = f"plan_{int(datetime.now().timestamp())}_user_{user_id}"
