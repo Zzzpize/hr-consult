@@ -1,5 +1,5 @@
 import streamlit as st
-import api_client # Наш модуль для общения с FastAPI
+import api_client
 
 # --- Конфигурация страницы ---
 st.set_page_config(
@@ -9,7 +9,6 @@ st.set_page_config(
 )
 
 # --- Инициализация состояния сессии ---
-# Это "память" приложения, которая сохраняется между действиями пользователя.
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_info = {}
@@ -35,8 +34,7 @@ def show_login_page():
                     if user_data and user_data.get("success"):
                         st.session_state.logged_in = True
                         st.session_state.user_info = user_data
-                        st.rerun() # Перезапускаем скрипт, чтобы показать основной интерфейс
-                    # Сообщение об ошибке выводится внутри api_client
+                        st.rerun()
 
 # =====================================================================================
 # --- СТРАНИЦА РАБОТНИКА ---
@@ -61,7 +59,6 @@ def show_employee_page():
             st.session_state.edit_mode = False
 
         # --- Кнопка для переключения в режим редактирования ---
-        # Если мы не в режиме редактирования, показываем кнопку
         if not st.session_state.edit_mode:
             if st.button("✏️ Редактировать профиль"):
                 st.session_state.edit_mode = True
@@ -101,7 +98,6 @@ def show_employee_page():
                             st.rerun()
 
         # --- Отображение профиля (основная часть) ---
-        # Этот блок будет виден всегда, даже во время редактирования, что может быть удобно
         profile_data, gamification_data = get_profile_data(user_id)
 
         if not profile_data or not gamification_data:
@@ -186,7 +182,6 @@ def show_employee_page():
         else:
             for offer in offers:
                 with st.container(border=True):
-                    # Получаем имя HR для отображения
                     hr_profile = api_client.get_user_profile(offer['from_hr_id'])
                     hr_name = hr_profile.get('name') if hr_profile else "Неизвестный HR"
 
@@ -197,7 +192,6 @@ def show_employee_page():
                     with st.expander("Показать описание"):
                         st.write(offer['description'])
 
-                    # Не показываем кнопки, если статус уже изменен
                     if offer['status'] == "Отправлено":
                         c1, c2 = st.columns(2)
                         with c1:
@@ -219,71 +213,97 @@ def show_hr_page():
     st.caption("Используйте умный поиск для нахождения идеальных кандидатов на основе их опыта и навыков.")
     st.markdown("---")
 
+    if 'sending_offer_to' not in st.session_state:
+        st.session_state.sending_offer_to = None
+    if 'search_results' not in st.session_state:
+        st.session_state.search_results = None
+
     tab_search, tab_my_offers = st.tabs(["🔍 Поиск кандидатов", "📄 Мои офферы"])
 
     with tab_search:
         st.header("🧠 Умный поиск кандидатов")
-        st.info("Опишите задачу или роль своими словами. Например: 'Нужен опытный разработчик на Python со знанием облачных технологий для нового проекта'. ИИ найдет самых релевантных сотрудников.")
+        
+        # --- ФОРМА ОТПРАВКИ ОФФЕРА (появляется при необходимости) ---
+        if st.session_state.sending_offer_to:
+            user_profile = api_client.get_user_profile(st.session_state.sending_offer_to)
+            candidate_name = user_profile.get('name') if user_profile else "Неизвестный кандидат"
+            
+            with st.container(border=True):
+                st.subheader(f"Отправка оффера для: {candidate_name}")
+                with st.form("offer_form"):
+                    title = st.text_input("Название вакансии / проекта")
+                    description = st.text_area("Описание оффера", height=200)
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.form_submit_button("✅ Отправить оффер", type="primary", use_container_width=True):
+                            if title and description:
+                                hr_id = st.session_state.user_info.get('user_id')
+                                with st.spinner("Отправка..."):
+                                    api_client.create_offer(from_hr_id=hr_id, to_user_id=st.session_state.sending_offer_to, title=title, description=description)
+                                st.success(f"Оффер для {candidate_name} успешно отправлен!")
+                                st.session_state.sending_offer_to = None
+                                st.rerun()
+                            else:
+                                st.warning("Пожалуйста, заполните все поля.")
+                    with c2:
+                        if st.form_submit_button("❌ Отмена", use_container_width=True):
+                            st.session_state.sending_offer_to = None
+                            st.rerun()
+
+        # --- ОСНОВНАЯ ФОРМА ПОИСКА ---
         with st.form("search_form"):
             search_prompt = st.text_area("Описание идеального кандидата:", height=150)
             submitted = st.form_submit_button("Найти кандидатов", type="primary", use_container_width=True)
+            
             if submitted and search_prompt:
                 with st.spinner("ИИ анализирует профили сотрудников..."):
-                    results = api_client.match_candidates(search_prompt)
-                st.subheader("🏆 Результаты поиска:")
-                if not results:
-                    st.warning("Не найдено подходящих кандидатов по вашему запросу.")
-                else:
-                    sorted_results = sorted(results, key=lambda x: x['score'], reverse=True)
-                    for result in sorted_results:
-                        with st.container(border=True):
-                            col1, col2 = st.columns([3, 1])
-                            with col1:
-                                st.subheader(result.get("name"))
-                                st.caption(f"Должность: {result.get('position')}")
-                            with col2:
-                                match_percent = int(result.get('score', 0) * 100)
-                                st.progress(match_percent, text=f"Релевантность: {match_percent}%")
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                if st.button("Посмотреть профиль", key=f"view_{result.get('user_id')}", use_container_width=True):
-                                    st.toast(f"Просмотр профиля {result.get('name')} (симуляция)")
-                            with c2:
-                                if st.button("Отправить оффер", key=f"offer_{result.get('user_id')}", use_container_width=True, type="secondary"):
-                                    st.toast(f"Отправка оффера {result.get('name')} (симуляция)")
-            elif submitted:
-                st.warning("Пожалуйста, введите описание для поиска.")
+                    st.session_state.search_results = api_client.match_candidates(search_prompt)
+        
+        # --- ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ (ВНЕ ФОРМЫ!) ---
+        st.markdown("---")
+        st.subheader("🏆 Результаты поиска:")
+        
+        if st.session_state.search_results is None:
+            st.info("Введите запрос и нажмите 'Найти кандидатов', чтобы увидеть результаты.")
+        elif not st.session_state.search_results:
+            st.warning("Не найдено подходящих кандидатов по вашему запросу.")
+        else:
+            sorted_results = sorted(st.session_state.search_results, key=lambda x: x['score'], reverse=True)
+            for result in sorted_results:
+                with st.container(border=True):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.subheader(result.get("name"))
+                        st.caption(f"Должность: {result.get('position')}")
+                    with col2:
+                        match_percent = int(result.get('score', 0) * 100)
+                        st.progress(match_percent, text=f"Релевантность: {match_percent}%")
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Посмотреть профиль", key=f"view_{result.get('user_id')}", use_container_width=True):
+                            st.toast(f"Просмотр профиля {result.get('name')} (симуляция)")
+                    with c2:
+                        if st.button("✍️ Отправить оффер", key=f"offer_{result.get('user_id')}", use_container_width=True, type="secondary"):
+                            st.session_state.sending_offer_to = result.get('user_id')
+                            st.rerun()
 
     with tab_my_offers:
         st.header("📄 Отслеживание отправленных офферов")
         hr_id = st.session_state.user_info.get('user_id')
         sent_offers = api_client.get_hr_offers(hr_id)
-
         if sent_offers is None:
             st.error("Не удалось загрузить отправленные офферы.")
         elif not sent_offers:
             st.info("Вы еще не отправили ни одного оффера.")
         else:
-            # Готовим данные для таблицы
             display_data = []
             for offer in sent_offers:
                 user_profile = api_client.get_user_profile(offer['to_user_id'])
                 user_name = user_profile.get('name') if user_profile else "Неизвестный сотрудник"
-                display_data.append({
-                    "candidate_name": user_name,
-                    "vacancy": offer['title'],
-                    "sent_at": offer.get('timestamp', '').strip('"'),
-                    "status": offer['status']
-                })
-
-            st.data_editor(
-                display_data,
-                column_config={
-                    "candidate_name": "Кандидат", "vacancy": "Вакансия", 
-                    "sent_at": "Отправлено", "status": "Статус"
-                },
-                hide_index=True, use_container_width=True, disabled=True
-            )
+                display_data.append({ "candidate_name": user_name, "vacancy": offer['title'], "sent_at": offer.get('timestamp', '').strip('"'), "status": offer['status'] })
+            st.data_editor(display_data, column_config={"candidate_name": "Кандидат", "vacancy": "Вакансия", "sent_at": "Отправлено", "status": "Статус"}, hide_index=True, use_container_width=True, disabled=True)
 
 # =====================================================================================
 # --- СТРАНИЦА АДМИНА ---
@@ -302,16 +322,14 @@ def show_admin_page():
             if submitted:
                 if all([new_name, new_role, new_username]):
                     with st.spinner(f"Создание пользователя {new_name}..."):
-                        # Вызываем api_client без пароля
                         response = api_client.create_user(
                             name=new_name, 
                             role=new_role, 
                             username=new_username,
-                            password=None # Передаем None, чтобы бэкенд сгенерировал пароль
+                            password=None
                         )
                         if response:
                             st.success(f"Пользователь '{response.get('name')}' успешно создан!")
-                            # Показываем сгенерированный пароль
                             st.info(f"Сгенерированный пароль: **{response.get('generated_password')}**")
                             st.warning("Скопируйте этот пароль сейчас. После закрытия формы он не будет доступен.")
                 else:
