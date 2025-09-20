@@ -99,6 +99,16 @@ class RedisClient:
         """Возвращает набор достижений пользователя."""
         if not self.client: return set()
         return self.client.smembers(f"user:{user_id}:achievements")
+    
+    def get_user_gamification_flag(self, user_id: int, flag_name: str) -> Optional[str]:
+        """Получает значение флага, например, дату последнего бонуса."""
+        if not self.client: return None
+        return self.client.hget(f"user:{user_id}:gamification_flags", flag_name)
+
+    def set_user_gamification_flag(self, user_id: int, flag_name: str, value: str):
+        """Устанавливает значение флага."""
+        if not self.client: return
+        self.client.hset(f"user:{user_id}:gamification_flags", flag_name, value)
 
     # --- Методы для Эмбеддингов (ML) (ВОЗВРАЩЕНЫ) ---
     def save_user_embedding(self, user_id: int, embedding: List[float]):

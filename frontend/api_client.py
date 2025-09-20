@@ -75,13 +75,21 @@ def match_candidates(prompt: str) -> Optional[List[Dict[str, Any]]]:
 # --- Gamification ---
 @_handle_request_errors
 def get_user_progress(user_id: int) -> Optional[Dict[str, Any]]:
-    response = requests.get(f"{BASE_URL}/gamification/progress/{user_id}")
-    return response
+    """Получает игровой прогресс пользователя (XP, уровень)."""
+    return requests.get(f"{BASE_URL}/gamification/progress/{user_id}")
 
 @_handle_request_errors
-def trigger_gamification_event(user_id: int, event_key: str) -> Optional[Dict[str, Any]]:
-    response = requests.post(f"{BASE_URL}/gamification/event/{user_id}", params={"event_key": event_key})
-    return response
+def trigger_gamification_event(user_id: int, event_key: str, event_data: Dict = None) -> Optional[Dict[str, Any]]:
+    """Сообщает бэкенду о произошедшем игровом событии."""
+    if event_data is None:
+        event_data = {}
+    payload = {"event_key": event_key, "event_data": event_data}
+    return requests.post(f"{BASE_URL}/gamification/event/{user_id}", json=payload)
+
+@_handle_request_errors
+def get_user_achievements_status(user_id: int) -> Optional[Dict[str, Any]]:
+    """Получает полный список всех достижений и их статус для пользователя."""
+    return requests.get(f"{BASE_URL}/gamification/achievements/{user_id}")
 
 @_handle_request_errors
 def create_offer(from_hr_id: int, to_user_id: int, title: str, description: str) -> Optional[Dict[str, Any]]:
