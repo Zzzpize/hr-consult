@@ -1,5 +1,6 @@
 dump_redis_to_json.py
 redis_dump.json
 venv
+utils
 notes.txt
 __pycache__

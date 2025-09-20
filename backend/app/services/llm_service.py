@@ -86,14 +86,11 @@ def cosine_similarity(vec1, vec2):
     v1, v2 = np.array(vec1), np.array(vec2)
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
-def find_best_career_plan(career_plans: List[Dict], user_profile: Dict) -> Dict:
+def find_best_career_plan(career_plans: List[Dict], career_plans_vec: List[List[float]], user_profile: Dict) -> Dict:
     user_text = " ".join(user_profile.get("skills", []))
     user_vec = get_embedding(user_text)
     best_match, best_score = None, -1
-    for plan in career_plans:
-        skills_text = " ".join([s["skill"] for s in plan.get("skill_gap", [])])
-        plan_text = f"{plan.get('plan_title', '')} {skills_text}"
-        plan_vec = get_embedding(plan_text)
+    for plan, plan_vec in zip(career_plans, career_plans_vec):
         score = cosine_similarity(user_vec, plan_vec)
         if score > best_score:
             best_match, best_score = plan, score
@@ -131,8 +128,9 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
 
 def generate_final_plan_from_chat(user_id: int) -> Dict:
     with open("backend/app/services/career_plans.json", "r") as f: career_plans = json.load(f)
+    with open("backend/app/services/career_plans_vec.json", "r") as f: career_plans_vec = json.load(f)
     user_profile = redis_client.get_user_profile(user_id)
-    best_plan = find_best_career_plan(career_plans, user_profile)
+    best_plan = find_best_career_plan(career_plans, career_plans_vec, user_profile)
     final_system_prompt = (
         f"{system_prompt_analyze}{user_profile}\n"
         f"Вот наиболее подходящий карьерный план для этого пользователя:\n{json.dumps(best_plan, ensure_ascii = False)}"
