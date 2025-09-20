@@ -148,3 +148,8 @@ def get_all_career_plans(user_id: int) -> Optional[Dict]:
 def clear_chat_history(user_id: int) -> Optional[Dict]:
     """Удаляет АКТИВНУЮ историю чата для пользователя."""
     return requests.delete(f"{BASE_URL}/chat/history/{user_id}")
+
+@_handle_request_errors
+def import_profile_from_chat(user_id: int) -> Optional[Dict[str, Any]]:
+    """Запускает импорт данных из чата в профиль."""
+    return requests.post(f"{BASE_URL}/profile/{user_id}/import-from-chat")
