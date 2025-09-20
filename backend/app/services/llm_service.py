@@ -57,8 +57,6 @@ example_plan = {
   ]
 }
 
-with open("backend/app/services/career_plans.json", "r") as f: career_plans = json.load(f)
-
 def exchange(messages: list, temperature: float = 1, max_tokens: int = 2000, response_format = None):
     try:
         client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
@@ -131,6 +129,7 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
     return answer
 
 def generate_final_plan_from_chat(user_id: int) -> Dict:
+    with open("backend/app/services/career_plans.json", "r") as f: career_plans = json.load(f)
     history = redis_client.get_active_chat_history(user_id)
     user_profile = extract_profile_data_from_chat(history)
     best_plan = find_best_career_plan(career_plans, user_profile)
