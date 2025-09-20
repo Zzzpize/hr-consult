@@ -185,46 +185,48 @@ def show_employee_page():
         else:
             st.subheader("Создание нового плана")
 
+            chat_container = st.container(height=400, border=True)
+
             if not st.session_state.get("messages"):
                  st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
 
             for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
+                with chat_container.chat_message(message["role"]):
                     st.markdown(message["content"])
 
             if prompt := st.chat_input("Напишите ваше сообщение..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"):
-                    st.markdown(prompt)
 
-                with st.chat_message("assistant"):
-                    with st.spinner("Думаю..."):
-                        response_data = api_client.get_chat_response(user_id, prompt)
-                        if response_data:
-                            bot_response = response_data.get("response", "Извините, произошла ошибка.")
-                            st.markdown(bot_response)
-                            st.session_state.messages.append({"role": "assistant", "content": bot_response})
-                        else:
-                            st.error("Не удалось получить ответ от сервера.")
+                with st.spinner("Думаю..."):
+                    response_data = api_client.get_chat_response(user_id, prompt)
 
-            if len(st.session_state.messages) > 3: 
-                if st.button("✅ Сгенерировать и сохранить план", use_container_width=True):
-                    with st.spinner("Систематизирую всю информацию и составляю ваш персональный план..."):
-                        plan_data = api_client.generate_final_plan_from_chat(user_id)
-                    
-                    if plan_data and plan_data.get("plan"):
-                        st.success("План успешно создан и сохранен!")
-                        st.balloons()
-                        st.session_state.chat_active = False
-                        st.cache_data.clear() 
-                        st.rerun()
-                    else:
-                        st.error("Не удалось сгенерировать план.")
-            
+                if response_data:
+                    bot_response = response_data.get("response", "Извините, произошла ошибка.")
+                    st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                else:
+                    st.session_state.messages.append({"role": "assistant", "content": "Не удалось получить ответ от сервера."})
 
-            if st.button("❌ Отменить создание плана"):
-                st.session_state.chat_active = False
                 st.rerun()
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if len(st.session_state.messages) > 3:
+                    if st.button("✅ Сгенерировать и сохранить план", use_container_width=True):
+                        with st.spinner("Систематизирую всю информацию и составляю ваш персональный план..."):
+                            plan_data = api_client.generate_final_plan_from_chat(user_id)
+                        
+                        if plan_data and plan_data.get("plan"):
+                            st.success("План успешно создан и сохранен!")
+                            st.balloons()
+                            st.session_state.chat_active = False
+                            st.cache_data.clear() 
+                            st.rerun()
+                        else:
+                            st.error("Не удалось сгенерировать план.")
+            with col2:
+                if st.button("❌ Отменить", use_container_width=True):
+                    st.session_state.chat_active = False
+                    st.rerun()
 
     with tab_offers:
         st.header("📬 Ваши предложения")
