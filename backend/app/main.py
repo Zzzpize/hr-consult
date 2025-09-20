@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from .api import users, auth, chat, matching, gamification, offers, profile
+from .api import users, auth, chat, matching, gamification, offers, profile, assets
 from .initial_data import create_initial_admin
 
 @asynccontextmanager
@@ -19,6 +19,7 @@ app.include_router(matching.router)
 app.include_router(gamification.router)
 app.include_router(offers.router)
 app.include_router(profile.router)
+app.include_router(assets.router)
 
 @app.get("/", tags=["Root"])
 def read_root():

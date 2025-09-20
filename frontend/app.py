@@ -218,17 +218,6 @@ def show_employee_page():
                     st.session_state.processing_bot_response = True
                     st.rerun()
 
-                if st.session_state.messages and "заполнить профиль автоматически" in st.session_state.messages[-1].get("content", "").lower():
-                    if st.button("🤖 Да, заполнить мой профиль на основе диалога!", use_container_width=True, type="primary"):
-                        with st.spinner("Анализирую диалог и обновляю ваш профиль..."):
-                            response = api_client.import_profile_from_chat(user_id)
-                        
-                        if response and response.get("success"):
-                            st.success("Ваш профиль успешно обновлен! Можете проверить его на вкладке 'Мой профиль'.")
-                            st.cache_data.clear()
-                        else:
-                            st.error("Не удалось обновить профиль.")
-
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     if len(st.session_state.messages) > 3:
