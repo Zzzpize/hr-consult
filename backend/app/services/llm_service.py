@@ -1,4 +1,5 @@
 import json
+import numpy as np
 from typing import Dict, List
 from app.core.redis_client import redis_client
 from openai import OpenAI
@@ -9,7 +10,7 @@ BASE_URL = "https://llm.t1v.scibox.tech/v1"
 
 system_prompt_info = "Ты — дружелюбный и эмпатичный карьерный консультант 'Навигатор'. Говорить, кто ты – НЕ НУЖНО. Приветствовать человека 'Привет' или 'Здравствуйте' – НЕ НУЖНО. Сразу переходи к делу. Твоя цель — узнать его 1) ФИО 2) отдел, должность и стаж работы 3) навыки (hard и soft skills) 4) последние 2 реализованных проекта 5) амбиции (вакансия, на которую хочет попасть пользователь). Вся уже собранная информация будет прикреплена последним абзацем в виде словаря (тебя будут интересовать элементы с ключом 'role' = 'user', 5 пунктов: ФИО, отдел/должность/стаж, навыки, проекты и амбиции). Информацию о пользователе ты ищешь по принципу первого вхождения: если, например, пользователь уже указал свое имя, ответив на твой вопрос, а затем снова написал какое-то другое, то ты не обращаешь внимания и обращаешься по первому имени. И так со всеми пунктами. Если ты видишь, что не все 5 пунктов закрыты полностью – задаешь пользователю уточняющие вопросы до тех пор, пока не соберется полная база знаний (в случае ФИО, например, нужно всегда просить абсолютно полное ФИО). Не переспрашивай ту информацию, что ты уже знаешь. Как только ты понимаешь, что база знаний полна информации по всем 5 пунктам – предложи ему заполнить профиль автоматически. Будь вежливым, но не жеманным и льстительным. При необходимости обращайся по имени (если ты его уже знаешь). Вот текущая история общения с пользователем, где ты можешь найти информацию о нем:\n"
 
-system_prompt_analyze = ""
+system_prompt_analyze = "Ты — дружелюбный и эмпатичный карьерный консультант 'Навигатор'. Говорить, кто ты – НЕ НУЖНО. Приветствовать человека 'Привет' или 'Здравствуйте' – НЕ НУЖНО. Сразу переходи к делу. Твоя цель — проанализировать уже собранные данные о пользователе и объяснить с учетом анализа, почему указанная в данном промпте (чуть ниже) вакансия/карьерный путь подходят ему больше всего, после чего вычленить всю информацию о требуемых навыках, обосновании их актуальности, конкретных шагах для получения вакансии и их описания (все эти данные бери только из того, что будет дальше в этом промпте, сам ничего не придумывай и никак не перефразируй – просто копируй уже прописанные навыки, шаги и их описания, слово в слово). Вся уже собранная информация о пользователе будет прикреплена предпоследним абзацем в виде словаря. Будь вежливым, но не жеманным и льстительным. При необходимости обращайся по имени. Вот информация о пользователе:\n"
 
 example_plan = {
   "plan_id": "plan_1726834988_user_3", 
@@ -72,6 +73,33 @@ def exchange(messages: list, temperature: float = 1, max_tokens: int = 2000, res
     except Exception as e:
         return f"\n--- ПРОИЗОШЛА ОШИБКА ---\n{e}"
     
+def get_embedding(text: str) -> list[float]:
+    try:
+      client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
+      response = client.embeddings.create(
+          model = "bge-m3",
+          input = text
+      )
+      return response.data[0].embedding
+    except Exception as e:
+      return f"\n--- ПРОИЗОШЛА ОШИБКА ---\n{e}"
+
+def cosine_similarity(vec1, vec2):
+    v1, v2 = np.array(vec1), np.array(vec2)
+    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+
+def find_best_career_plan(career_plans: List[Dict], user_profile: Dict) -> Dict:
+    user_text = " ".join(user_profile["skills"])
+    user_vec = get_embedding(user_text)
+    best_match, best_score = None, -1
+    for plan in career_plans:
+        plan_text = f"{plan['target_role']} {plan['description']}"
+        plan_vec = get_embedding(plan_text)
+        score = cosine_similarity(user_vec, plan_vec)
+        if score > best_score:
+            best_match, best_score = plan, score
+    return best_match["target_role"]
+    
 def get_next_chat_response(user_id: int, user_prompt: str) -> str:
     history = redis_client.get_active_chat_history(user_id)
     history.append({"role": "user", "content": user_prompt})
@@ -104,15 +132,15 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
 
 def generate_final_plan_from_chat(user_id: int) -> Dict:
     history = redis_client.get_active_chat_history(user_id)
-    career_plans_text = json.dumps(career_plans, ensure_ascii=False, indent=2)
+    user_profile = extract_profile_data_from_chat(history)
+    best_plan = find_best_career_plan(career_plans, user_profile)
     final_system_prompt = (
-        f"{system_prompt_analyze}\n\n"
+        f"{system_prompt_analyze}{user_profile}\nВот наиболее подходящая карьерная цель для этого пользователя:\n{best_plan}"
         "После анализа, твоя задача — вернуть результат ИСКЛЮЧИТЕЛЬНО в формате JSON, "
         "без каких-либо вводных слов или комментариев. "
-        f"Структура JSON должна строго соответствовать этому примеру: {json.dumps(example_plan, ensure_ascii=False)}\n\n"
-        f"Вот база карьерных треков:\n{career_plans_text}\nВот история общения с пользователем, где ты можешь найти информацию о нем:\n"
+        f"Структура JSON должна строго соответствовать этому примеру: {json.dumps(example_plan, ensure_ascii = False)}\n\n"
     )
-    messages_for_llm = [{"role": "system", "content": final_system_prompt}] + history
+    messages_for_llm = [{"role": "system", "content": final_system_prompt}]
     answer = exchange(
         messages_for_llm,
         temperature = 1,
@@ -137,9 +165,6 @@ def find_similar_users(prompt: str, top_k: int = 5):
     ]
 
 def extract_profile_data_from_chat(history: List[Dict]) -> Dict:
-    """
-    Извлекает структурированные данные (ФИО, навыки и т.д.) из диалога.
-    """
     extraction_prompt = (
         "Проанализируй предоставленный диалог между пользователем и карьерным консультантом. "
         "Твоя задача — извлечь из ответов пользователя следующую информацию и вернуть ее в формате JSON: "
@@ -149,7 +174,5 @@ def extract_profile_data_from_chat(history: List[Dict]) -> Dict:
         "Если какую-то информацию найти не удалось, оставь соответствующее поле пустым. "
         "Верни только JSON объект, без лишних слов."
     )
-    
     messages_for_llm = history + [{"role": "system", "content": extraction_prompt}]
-
-    return json.loads(exchange(messages_for_llm, response_format={"type": "json_object"}))
+    return json.loads(exchange(messages_for_llm, response_format = {"type": "json_object"}))
