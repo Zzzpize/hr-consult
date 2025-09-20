@@ -3,4 +3,5 @@ redis_dump.json
 venv
 utils
 notes.txt
-__pycache__
+*/__pycache__/
+*.pyc
