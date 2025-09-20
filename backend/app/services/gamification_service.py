@@ -38,6 +38,11 @@ class GamificationService:
         elif event_key == "FIRST_CHAT_MESSAGE" and "ACH_FIRST_STEP" not in current_achievements:
              xp_added = GAME_EVENTS[event_key]['xp']
 
+        elif event_key == "FIRST_CHAT_MESSAGE":
+            if not redis_client.get_user_gamification_flag(user_id, "first_chat_message_sent"):
+                 xp_added = GAME_EVENTS[event_key]['xp']
+                 redis_client.set_user_gamification_flag(user_id, "first_chat_message_sent", "true")
+
         now_hour = datetime.now(timezone.utc).hour
         if 2 <= now_hour < 4:
             last_bonus_date = redis_client.get_user_gamification_flag(user_id, "last_night_owl_bonus")
