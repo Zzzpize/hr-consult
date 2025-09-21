@@ -378,7 +378,7 @@ def show_hr_page():
     if 'search_results' not in st.session_state: st.session_state.search_results = None
     if 'viewing_profile_id' not in st.session_state: st.session_state.viewing_profile_id = None
 
-    if st.session_state.viewing_profile_id:
+    if st.session_state.get('show_profile_dialog'):
         @st.dialog("Профиль кандидата", width="large")
         def show_profile_dialog():
             profile_id = st.session_state.viewing_profile_id
@@ -497,10 +497,12 @@ def show_hr_page():
                     with c1:
                         if st.button("Посмотреть профиль", key=f"view_{result.get('user_id')}", use_container_width=True):
                             st.session_state.viewing_profile_id = result.get('user_id')
+                            st.session_state.show_profile_dialog = True
                             st.rerun()
                     with c2:
                         if st.button("✍️ Отправить оффер", key=f"offer_{result.get('user_id')}", use_container_width=True, type="secondary"):
                             st.session_state.sending_offer_to = result.get('user_id')
+                            st.session_state.show_profile_dialog = False
                             st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
         else:
