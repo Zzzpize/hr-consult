@@ -82,24 +82,24 @@ def get_embedding(text: str) -> list[float]:
     except Exception as e:
       return f"\n--- ПРОИЗОШЛА ОШИБКА ---\n{e}"
 
-def cosine_similarity(vec1, vec2):
+def cosine_similarity(vec1, vec2) -> float:
     v1, v2 = np.array(vec1), np.array(vec2)
-    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+    return abs(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
-def euclidean_distance(vec1, vec2):
+def euclidean_similarity(vec1, vec2) -> float:
     v1, v2 = np.array(vec1), np.array(vec2)
-    return np.sqrt(np.sum((np.array(v1) - np.array(v2)) ** 2))
+    return float(1 / (1 + np.linalg.norm(v1 - v2)))
 
-def manhattan_distance(vec1, vec2):
+def manhattan_similarity(vec1, vec2) -> float:
     v1, v2 = np.array(vec1), np.array(vec2)
-    return np.sum(np.abs(np.array(v1) - np.array(v2)))
+    return float(1 / (1 + np.sum(np.abs(v1 - v2))))
 
 def find_best_career_plan(career_plans: List[Dict], career_plans_vec: List[List[float]], user_profile: Dict) -> Dict:
     user_text = " ".join(user_profile.get("skills", []))
     user_vec = get_embedding(user_text)
     best_match, best_score = None, -1
     for plan, plan_vec in zip(career_plans, career_plans_vec):
-        score = euclidean_distance(user_vec, plan_vec)
+        score = cosine_similarity(user_vec, plan_vec)
         if score > best_score:
             best_match, best_score = plan, score
     return best_match
@@ -209,10 +209,10 @@ def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
     print(users)
     scored_users = []
     for user in users:
-        if user.get("id") != 1:
+        if user.get("id") != '1':
             user_vec = redis_client.get_user_embedding(user.get("id"))
             if user_vec is None: continue
-            similarity = euclidean_distance(hr_vec, user_vec)
+            similarity = cosine_similarity(hr_vec, user_vec)
             scored_users.append({
                 "user_id": user.get("id"),
                 "score": similarity
