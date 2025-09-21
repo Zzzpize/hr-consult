@@ -46,11 +46,18 @@ class RedisClient:
         return user_id
 
     def get_all_users_info(self) -> List[Dict]:
-        """Возвращает информацию о всех пользователях."""
+        """Возвращает информацию о всех пользователях, включая их пароли."""
         if not self.client: return []
+        
         user_ids_map = self.client.hgetall("global:username_to_id")
-        users_list = [self.get_user_profile(int(uid)) for uname, uid in user_ids_map.items()]
-        return [user for user in users_list if user]
+        users_list = []
+        for username, user_id_str in user_ids_map.items():
+            user_id = int(user_id_str)
+            user_data = self.get_user_profile(user_id)
+            if user_data:
+                user_data['password'] = self.get_user_auth(user_id)
+                users_list.append(user_data)
+        return users_list
 
     def delete_user(self, user_id: int):
         """Полностью удаляет пользователя и все его данные."""
