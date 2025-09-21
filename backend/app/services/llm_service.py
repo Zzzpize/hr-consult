@@ -58,7 +58,7 @@ example_plan = {
   ]
 }
 
-def exchange(messages: list, temperature: float = 1, max_tokens: int = 50000, response_format = None):
+def exchange(messages: list, temperature: float = 1, max_tokens: int = 10000, response_format = None):
     try:
         client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
         resp = client.chat.completions.create(
@@ -216,15 +216,14 @@ def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
     hr_vec = get_embedding(" ".join(hr_request.get("lemmas", [])))
     vectorize_all_users_in_redis()
     users = redis_client.get_all_users_info()
-    print(users)
     scored_users = []
     for user in users:
-        if user.get("id") != '1':
-            user_vec = redis_client.get_user_embedding(user.get("id"))
-            if user_vec is None: continue
-            similarity = cosine_similarity(hr_vec, user_vec)
-            scored_users.append({
-                "user_id": user.get("id"),
-                "score": similarity
-            })
+        if user.get("id") == '1' or user.get("profile", {}).get("role") == 'HR' or (not user.get("about", [])): continue
+        user_vec = redis_client.get_user_embedding(user.get("id"))
+        if user_vec is None: continue
+        similarity = cosine_similarity(hr_vec, user_vec)
+        scored_users.append({
+            "user_id": user.get("id"),
+            "score": similarity
+        })
     return scored_users[:top_k]
