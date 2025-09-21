@@ -1,8 +1,9 @@
 import redis
 import json
 import time
+import os
 
-REDIS_HOST = 'localhost'
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = 6379
 REDIS_DB = 0
 INPUT_FILENAME = 'redis_dump.json'
@@ -38,20 +39,28 @@ def load_redis_data():
     print("Loading data into Redis...")
 
     for key, value in data.get('globals', {}).items():
-        r.set(key, value)
+        if isinstance(value, dict):
+            r.hset(key, mapping=value)
+        else:
+            r.set(key, str(value))
         total_keys += 1
 
     for user_id, user_data in data.get('users', {}).items():
         for sub_key, value in user_data.items():
             full_key = f"user:{user_id}:{sub_key}"
             if sub_key == 'profile':
-                r.hset(full_key.replace(':profile', ''), mapping=value)
-            elif isinstance(value, list): 
-                r.rpush(full_key, *[json.dumps(item) if isinstance(item, dict) else item for item in value])
-            elif isinstance(value, dict): 
+                r.hset(f"user:{user_id}", mapping=value)
+            elif sub_key == 'skills':
+                 if value: r.sadd(full_key, *value)
+            elif isinstance(value, list):
+                if value: r.rpush(full_key, *[json.dumps(item) if isinstance(item, dict) else item for item in value])
+            elif isinstance(value, dict):
                 r.hset(full_key, mapping=value)
-            else: 
-                r.set(full_key, value)
+            else:
+                if sub_key == 'embedding':
+                    r.set(full_key, json.dumps(value))
+                else:
+                    r.set(full_key, value)
             total_keys += 1
 
     for offer_id, offer_data in data.get('offers', {}).items():
