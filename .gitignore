@@ -5,3 +5,4 @@ utils
 notes.txt
 */__pycache__/
 *.pyc
+test.py
