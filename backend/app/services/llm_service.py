@@ -151,17 +151,6 @@ def generate_final_plan_from_chat(user_id: int) -> Dict:
     redis_client.clear_active_chat_history(user_id)
     return plan_data
 
-def vectorize_all_users_in_redis():
-    print("Векторизация пользователей (пока не реализована)...")
-    pass
-
-def find_similar_users(prompt: str, top_k: int = 5):
-    print(f"Поиск похожих пользователей для промпта: '{prompt}' (пока не реализован)...")
-    return [
-        {"user_id": 1, "score": 0.99},
-        {"user_id": 2, "score": 0.85},
-    ]
-
 def extract_profile_data_from_chat(history: List[Dict]) -> Dict:
     extraction_prompt = (
         "Проанализируй предоставленный диалог между пользователем и карьерным консультантом. "
@@ -197,25 +186,27 @@ def lemmatization(hr_text: str) -> Dict:
         return {"error": "Не удалось распарсить ответ модели", "raw_response": raw_response}
 
 def find_best_candidate(users_list: List[Dict], hr_request: Dict) -> Dict:
-    if not users_list:
-        return {"error": "Список пользователей пуст"}
-    hr_vector = get_embedding(" ".join(hr_request.get('lemmas', [])))
-    if isinstance(hr_vector, str):  # Проверка на ошибку
-        return {"error": f"Ошибка векторизации запроса HR: {hr_vector}"}
-    best_candidate = None
-    best_score = -1
+    hr_vec = get_embedding(" ".join(hr_request.get('lemmas', [])))
+    best_candidate, best_score = None, -1
     for user in users_list:
-        user_info = f"{user.get('name', '')} {user.get('position', '')} {' '.join(user.get('skills', []))}"
-        user_vector = get_embedding(user_info)
-        if isinstance(user_vector, str):  # Проверка на ошибку
-            continue
-        similarity = cosine_similarity(hr_vector, user_vector)
+        user_vec = redis_client.get_user_embedding(user.get('user_id', 1))
+        similarity = cosine_similarity(hr_vec, user_vec)
         if similarity > best_score:
-            best_score = similarity
-            best_candidate = {
-                **user,
-                "similarity_score": similarity
-            }
-    if best_candidate:
-        return best_candidate
-    return {"error": "Не найдено подходящих кандидатов"}
+            best_candidate, best_score = user, similarity
+    return best_candidate
+
+def vectorize_all_users_in_redis():
+    users = redis_client.get_all_users_info()
+    for user in users:
+        if user.get('user_id', 1) != 1:
+            user_info = " ".join(user.get("skills", []))
+            redis_client.save_user_embedding(user.get('user_id', 1), get_embedding(user_info))
+
+def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
+    hr_request = lemmatization(hr_text)
+    vectorize_all_users_in_redis()
+    users, top_users = redis_client.get_all_users_info(), []
+    for _ in range(top_k):
+        top_users.append(find_best_candidate(users, hr_request))
+        users.remove(top_users[-1])
+    return top_users
