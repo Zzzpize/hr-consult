@@ -368,7 +368,7 @@ def show_hr_page():
             else:
                 col1, col2 = st.columns([1, 4])
                 with col1:
-                    st.image(profile_data.get("photo_url", ""), use_column_width=True, caption=profile_data.get("nickname"))
+                    st.image(profile_data.get("photo_url", ""), use_container_width=True, caption=profile_data.get("nickname"))
                 with col2:
                     st.header(profile_data.get("name"))
                     st.subheader(profile_data.get("position", "Должность не указана"))
