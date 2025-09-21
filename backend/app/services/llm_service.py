@@ -174,6 +174,7 @@ def lemmatization(hr_text: str) -> Dict:
     3. Для омонимов используйте контекст для выбора правильной леммы\n
     4. Сохраняйте пунктуацию и специальные символы без изменений\n
     5. Обрабатывайте неологизмы и редкие слова на основе морфологических правил\n\n
+    Итоговый ответ упакуй в JSOM с единственным ключом "lemmas", значением которого будет список лемматизированных слов.
     ФОРМАТ ОТВЕТА: Отвечайте ТОЛЬКО валидным JSON без дополнительного текста. """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -185,28 +186,25 @@ def lemmatization(hr_text: str) -> Dict:
     except json.JSONDecodeError:
         return {"error": "Не удалось распарсить ответ модели", "raw_response": raw_response}
 
-def find_best_candidate(users_list: List[Dict], hr_request: Dict) -> Dict:
-    hr_vec = get_embedding(" ".join(hr_request.get('lemmas', [])))
-    best_candidate, best_score = None, -1
-    for user in users_list:
-        user_vec = redis_client.get_user_embedding(user.get('user_id', 1))
-        similarity = cosine_similarity(hr_vec, user_vec)
-        if similarity > best_score:
-            best_candidate, best_score = {'user_id' : user.get('user_id', 1), 'score': similarity}, similarity
-    return best_candidate
-
 def vectorize_all_users_in_redis():
     users = redis_client.get_all_users_info()
     for user in users:
-        if user.get('user_id', 1) != 1:
-            user_info = f"{user.get('position', '')} {user.get('about', '')} {' '.join(user.get('skills', []))}"
-            redis_client.save_user_embedding(user.get('user_id', 1), get_embedding(user_info))
+        user_info = f"{user.get('position', '')} {user.get('about', '')} {' '.join(user.get('skills', []))}"
+        redis_client.save_user_embedding(user.get('user_id', 1), get_embedding(user_info))
 
 def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
     hr_request = lemmatization(hr_text)
+    hr_vec = get_embedding(" ".join(hr_request.get("lemmas", [])))
     vectorize_all_users_in_redis()
-    users, top_users = redis_client.get_all_users_info(), []
-    for _ in range(top_k):
-        top_users.append(find_best_candidate(users, hr_request))
-        users.remove(top_users[-1])
-    return top_users
+    users = redis_client.get_all_users_info()
+    scored_users = []
+    for user in users:
+        user_vec = redis_client.get_user_embedding(user.get("user_id", 1))
+        if user_vec is None: continue
+        similarity = cosine_similarity(hr_vec, user_vec)
+        scored_users.append({
+            "user_id": user.get("user_id", 1),
+            "score": similarity
+        })
+    scored_users.sort(key = lambda u: u["score"], reverse = True)
+    return scored_users[:top_k]
