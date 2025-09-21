@@ -11,64 +11,6 @@ st.set_page_config(
     page_icon="🚀"
 )
 
-'''
-HIDE_DEFAULT_FORMAT = """
-<style>
-/* скрываем дефолтные элементы Streamlit */
-header [data-testid="stToolbar"] {visibility: hidden !important;}
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-
-/* базовая цветовая схема: чёрный фон, жёлтые акценты */
-html, body, [class*="css"]  {
-    background-color: #0d0d0d !important;  /* глубокий чёрный */
-    color: #f5c518 !important;            /* жёлтый текст */
-    font-family: "Inter", sans-serif;
-}
-
-/* боковая панель */
-[data-testid="stSidebar"] {
-    background-color: #1a1a1a !important;
-    color: #f5c518 !important;
-}
-
-/* кнопки */
-button, .stButton>button {
-    background-color: #f5c518 !important;
-    color: #0d0d0d !important;
-    border-radius: 6px !important;
-    font-weight: bold !important;
-    border: none !important;
-}
-button:hover {
-    background-color: #ffd633 !important;
-    color: #000000 !important;
-}
-
-/* таблицы */
-.stDataFrame, .st-emotion-cache-1y4p8pa, .st-emotion-cache-1avcm0n {
-    background-color: #1a1a1a !important;
-    color: #f5c518 !important;
-    border: 1px solid #f5c518 !important;
-}
-
-/* заголовки */
-h1, h2, h3, h4, h5, h6 {
-    color: #f5c518 !important;
-    font-weight: 700 !important;
-}
-
-/* input-поля */
-input, textarea, select {
-    background-color: #0d0d0d !important;
-    color: #f5c518 !important;
-    border: 1px solid #f5c518 !important;
-}
-</style>
-"""
-
-st.markdown(HIDE_DEFAULT_FORMAT, unsafe_allow_html=True)
-'''
 # --- Инициализация состояния сессии ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
