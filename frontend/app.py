@@ -11,64 +11,15 @@ st.set_page_config(
     page_icon="🚀"
 )
 
-'''
 HIDE_DEFAULT_FORMAT = """
 <style>
-/* скрываем дефолтные элементы Streamlit */
 header [data-testid="stToolbar"] {visibility: hidden !important;}
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-
-/* базовая цветовая схема: чёрный фон, жёлтые акценты */
-html, body, [class*="css"]  {
-    background-color: #0d0d0d !important;  /* глубокий чёрный */
-    color: #f5c518 !important;            /* жёлтый текст */
-    font-family: "Inter", sans-serif;
-}
-
-/* боковая панель */
-[data-testid="stSidebar"] {
-    background-color: #1a1a1a !important;
-    color: #f5c518 !important;
-}
-
-/* кнопки */
-button, .stButton>button {
-    background-color: #f5c518 !important;
-    color: #0d0d0d !important;
-    border-radius: 6px !important;
-    font-weight: bold !important;
-    border: none !important;
-}
-button:hover {
-    background-color: #ffd633 !important;
-    color: #000000 !important;
-}
-
-/* таблицы */
-.stDataFrame, .st-emotion-cache-1y4p8pa, .st-emotion-cache-1avcm0n {
-    background-color: #1a1a1a !important;
-    color: #f5c518 !important;
-    border: 1px solid #f5c518 !important;
-}
-
-/* заголовки */
-h1, h2, h3, h4, h5, h6 {
-    color: #f5c518 !important;
-    font-weight: 700 !important;
-}
-
-/* input-поля */
-input, textarea, select {
-    background-color: #0d0d0d !important;
-    color: #f5c518 !important;
-    border: 1px solid #f5c518 !important;
-}
 </style>
 """
 
 st.markdown(HIDE_DEFAULT_FORMAT, unsafe_allow_html=True)
-'''
 # --- Инициализация состояния сессии ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -398,9 +349,9 @@ def show_hr_page():
     if 'search_results' not in st.session_state: st.session_state.search_results = None
     if 'viewing_profile_id' not in st.session_state: st.session_state.viewing_profile_id = None
 
-    # --- Модальное окно для просмотра профиля ---
     if st.session_state.viewing_profile_id:
-        with st.container(border=True):
+        @st.dialog("Профиль кандидата", width="large")
+        def show_profile_dialog():
             profile_id = st.session_state.viewing_profile_id
             
             @st.cache_data(ttl=10) 
@@ -422,17 +373,19 @@ def show_hr_page():
                     st.header(profile_data.get("name"))
                     st.subheader(profile_data.get("position", "Должность не указана"))
                     st.markdown(f"**Обо мне:** *{profile_data.get('about') or 'Информация не заполнена.'}*")
+                
                 st.markdown("---")
                 st.subheader("Ключевые навыки")
                 skills = profile_data.get("skills", [])
                 if skills: st.info(" ".join([f"`{skill.upper()}`" for skill in skills]))
                 else: st.warning("Пользователь не добавил ни одного навыка.")
+                
                 st.markdown("---")
                 st.subheader("Прогресс и достижения")
-                g_col1, g_col2 = st.columns(2)
+                g_col1, g_g_col2 = st.columns(2)
                 with g_col1:
                     st.metric("✨ Очки опыта (XP)", gamification_data.get('xp', 0))
-                with g_col2:
+                with g_g_col2:
                     st.metric("🚀 Уровень", f"Lvl {gamification_data.get('level', 1)}")
                 all_ach = achievements_data.get('achievements', [])
                 if all_ach:
@@ -446,6 +399,8 @@ def show_hr_page():
             if st.button("Закрыть", use_container_width=True):
                 st.session_state.viewing_profile_id = None
                 st.rerun()
+
+        show_profile_dialog()
 
     st.markdown("---")
     tab_search, tab_my_offers = st.tabs(["🔍 Поиск кандидатов", "📄 Мои офферы"])
