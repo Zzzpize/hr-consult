@@ -521,7 +521,7 @@ def show_hr_page():
 def show_admin_page():
     st.title("🛠️ Панель администратора")
     with st.expander("Создать нового пользователя", expanded=False):
-        with st.form("create_user_form", clear_on_submit=False): # clear_on_submit=False, чтобы показать пароль
+        with st.form("create_user_form", clear_on_submit=True): 
             st.subheader("Данные нового пользователя")
             new_name = st.text_input("ФИО")
             new_username = st.text_input("Логин (username)")
@@ -541,17 +541,39 @@ def show_admin_page():
                         if response:
                             st.success(f"Пользователь '{response.get('name')}' успешно создан!")
                             st.info(f"Сгенерированный пароль: **{response.get('generated_password')}**")
-                            st.warning("Скопируйте этот пароль сейчас. После закрытия формы он не будет доступен.")
                 else:
                     st.warning("Пожалуйста, заполните ФИО, Логин и Роль.")
+    
     st.markdown("---")
     st.subheader("Управление существующими пользователями")
+
+    if st.button("🔄 Обновить список"):
+        st.cache_data.clear()
+        st.rerun()
+
     all_users = api_client.get_all_users()
     if not all_users:
         st.info("В системе пока нет пользователей.")
     else:
         for user in all_users: user['delete'] = False
-        edited_users_df = st.data_editor(all_users, column_config={"id": "ID", "name": "ФИО", "role": "Роль", "position": "Должность", "delete": st.column_config.CheckboxColumn("Удалить?", help="Отметьте для удаления")}, hide_index=True, key="user_editor", use_container_width=True)
+
+        edited_users_df = st.data_editor(
+            all_users, 
+            column_config={
+                "id": "ID", 
+                "name": "ФИО", 
+                "role": "Роль", 
+                "nickname": "Логин",
+                "password": st.column_config.TextColumn("Пароль", width="medium"),
+                "position": "Должность", 
+                "delete": st.column_config.CheckboxColumn("Удалить?", help="Отметьте для удаления")
+            }, 
+            column_order=("id", "name", "nickname", "password", "role", "position", "delete"),
+            hide_index=True, 
+            key="user_editor", 
+            use_container_width=True
+        )
+        
         if st.button("🗑️ Применить удаление отмеченных", type="primary"):
             users_to_delete = [user for user in edited_users_df if user.get("delete")]
             if users_to_delete:
@@ -560,10 +582,10 @@ def show_admin_page():
                     api_client.delete_user(user['id'])
                     st.toast(f"✅ Пользователь {user['name']} удален.")
                     progress_bar.progress((i + 1) / len(users_to_delete), text=f"Удалено {i+1} из {len(users_to_delete)}")
+                st.cache_data.clear()
                 st.rerun()
             else:
                 st.info("Ни один пользователь не был отмечен для удаления.")
-
 # =====================================================================================
 # --- ГЛАВНЫЙ РОУТЕР ПРИЛОЖЕНИЯ ---
 # =====================================================================================
