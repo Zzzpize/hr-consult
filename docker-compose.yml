@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/DockerFile
+    env_file:
+      - .env
     container_name: talent_navigator_backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:

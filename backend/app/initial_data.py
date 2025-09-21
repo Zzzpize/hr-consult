@@ -1,4 +1,5 @@
 from .core.redis_client import redis_client
+from .core.config import ADMIN_PASSWORD, ADMIN_USERNAME
 
 def create_initial_admin():
     """
@@ -14,7 +15,7 @@ def create_initial_admin():
         redis_client.create_user(
             name="Администратор",
             role="Admin",
-            username="admin",
-            password="admin"
+            username=ADMIN_USERNAME,
+            password=ADMIN_PASSWORD
         )
         print("Initial admin user 'admin' with password 'admin' created successfully.")
