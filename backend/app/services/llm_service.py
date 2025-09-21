@@ -86,6 +86,14 @@ def cosine_similarity(vec1, vec2):
     v1, v2 = np.array(vec1), np.array(vec2)
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
+def euclidean_distance(vec1, vec2):
+    v1, v2 = np.array(vec1), np.array(vec2)
+    return np.sqrt(np.sum((np.array(v1) - np.array(v2)) ** 2))
+
+def manhattan_distance(vec1, vec2):
+    v1, v2 = np.array(vec1), np.array(vec2)
+    return np.sum(np.abs(np.array(v1) - np.array(v2)))
+
 def find_best_career_plan(career_plans: List[Dict], career_plans_vec: List[List[float]], user_profile: Dict) -> Dict:
     user_text = " ".join(user_profile.get("skills", []))
     user_vec = get_embedding(user_text)
