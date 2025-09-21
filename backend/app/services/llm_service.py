@@ -94,7 +94,14 @@ def manhattan_similarity(vec1, vec2) -> float:
     v1, v2 = np.array(vec1), np.array(vec2)
     return float(1 / (1 + np.sum(np.abs(v1 - v2))))
 
+def vectorize_all_users_in_redis():
+    users = redis_client.get_all_users_info()
+    for user in users:
+        user_info = f"{user.get('position', '')} {user.get('about', '')} {' '.join(user.get('skills', []))}"
+        redis_client.save_user_embedding(user.get('id'), get_embedding(user_info))
+
 def find_best_career_plan(career_plans: List[Dict], career_plans_vec: List[List[float]], user_profile: Dict) -> Dict:
+    vectorize_all_users_in_redis()
     user_vec = redis_client.get_user_embedding(user_profile.get('id'))
     best_match, best_score = None, -1
     for plan, plan_vec in zip(career_plans, career_plans_vec):
@@ -144,7 +151,6 @@ def generate_final_plan_from_chat(user_id: int) -> Dict:
     with open("backend/app/services/career_plans.json", "r") as f: career_plans = json.load(f)
     with open("backend/app/services/career_plans_vec.json", "r") as f: career_plans_vec = json.load(f)
     with open("backend/app/services/courses.json", "r") as f: courses = json.load(f)
-    vectorize_all_users_in_redis()
     user_profile = redis_client.get_user_profile(user_id)
     best_plan = find_best_career_plan(career_plans, career_plans_vec, user_profile)
     best_courses = find_courses(best_plan.get("target_role", ""), courses)
@@ -204,15 +210,10 @@ def lemmatization(hr_text: str) -> Dict:
     except json.JSONDecodeError:
         return {"error": "Не удалось распарсить ответ модели", "raw_response": raw_response}
 
-def vectorize_all_users_in_redis():
-    users = redis_client.get_all_users_info()
-    for user in users:
-        user_info = f"{user.get('position', '')} {user.get('about', '')} {' '.join(user.get('skills', []))}"
-        redis_client.save_user_embedding(user.get('id'), get_embedding(user_info))
-
 def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
     hr_request = lemmatization(hr_text)
     hr_vec = get_embedding(" ".join(hr_request.get("lemmas", [])))
+    vectorize_all_users_in_redis()
     users = redis_client.get_all_users_info()
     print(users)
     scored_users = []
