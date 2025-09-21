@@ -1,0 +1,295 @@
+{
+  "t1 cloud platform: архитектура и администрирование": {
+    "описание": "глубокое изучение внутренней облачной платформы t1, включая управление ресурсами, автоскейлинг, мониторинг и оптимизацию затрат для корпоративных проектов",
+    "подходящие_вакансии": [
+      "cloud engineer",
+      "infrastructure engineer",
+      "platform engineer",
+      "site reliability engineer",
+      "devops engineer",
+      "solution architect",
+      "systems architect",
+      "performance engineer",
+      "observability engineer"
+    ]
+  },
+  "высоконагруженные финтех-системы на java": {
+    "описание": "разработка критически важных банковских систем на java с фокусом на производительность, надежность и соответствие финансовым регуляторным требованиям",
+    "подходящие_вакансии": [
+      "backend java developer",
+      "solution architect",
+      "systems architect",
+      "performance engineer",
+      "enterprise analyst",
+      "integration specialist",
+      "fullstack developer"
+    ]
+  },
+  "t1 mobile sdk и кроссплатформенная разработка": {
+    "описание": "создание мобильных приложений с использованием внутренних sdk t1, интеграция с банковскими api и обеспечение безопасности финансовых операций",
+    "подходящие_вакансии": [
+      "mobile developer (ios)",
+      "mobile developer (android)",
+      "fullstack developer",
+      "product manager",
+      "ui/ux designer",
+      "qa automation engineer",
+      "security analyst"
+    ]
+  },
+  "микросервисная архитектура в экосистеме t1": {
+    "описание": "проектирование и разработка микросервисов для банковской платформы с использованием внутренних фреймворков, service mesh и распределенных транзакций",
+    "подходящие_вакансии": [
+      "backend java developer",
+      "middle python developer",
+      "solution architect",
+      "systems architect",
+      "devops engineer",
+      "platform engineer",
+      "integration specialist",
+      "performance engineer"
+    ]
+  },
+  "t1 datalake и корпоративная аналитика": {
+    "описание": "работа с корпоративным озером данных t1, построение etl-пайплайнов, создание аналитических дашбордов и обеспечение качества данных",
+    "подходящие_вакансии": [
+      "data engineer",
+      "data scientist",
+      "big data engineer",
+      "analytics engineer",
+      "etl developer",
+      "data governance specialist",
+      "business analyst",
+      "machine learning engineer",
+      "mlops engineer"
+    ]
+  },
+  "внутренние devops практики и t1 ci/cd": {
+    "описание": "освоение корпоративных процессов непрерывной интеграции и доставки с использованием внутренних инструментов t1 и gitlab enterprise",
+    "подходящие_вакансии": [
+      "devops engineer",
+      "release manager",
+      "platform engineer",
+      "site reliability engineer",
+      "infrastructure engineer",
+      "mlops engineer",
+      "devsecops engineer",
+      "cloud engineer",
+      "game developer (unity)",
+      "ar/vr developer"
+    ]
+  },
+  "информационная безопасность в финтехе": {
+    "описание": "специализированный курс по обеспечению кибербезопасности в банковской сфере, включая pci dss, защиту персональных данных и предотвращение финансового мошенничества",
+    "подходящие_вакансии": [
+      "cybersecurity specialist",
+      "security analyst",
+      "devsecops engineer",
+      "penetration tester",
+      "cloud security engineer",
+      "data governance specialist",
+      "enterprise analyst",
+      "systems architect"
+    ]
+  },
+  "machine learning в банковской аналитике": {
+    "описание": "применение алгоритмов машинного обучения для скоринга, антифрода, персонализации банковских продуктов и прогнозирования рисков",
+    "подходящие_вакансии": [
+      "machine learning engineer",
+      "data scientist",
+      "ai researcher",
+      "mlops engineer",
+      "analytics engineer",
+      "data engineer",
+      "business analyst"
+    ]
+  },
+  "t1 frontend framework и design system": {
+    "описание": "разработка пользовательских интерфейсов с использованием корпоративной дизайн-системы t1, включая компонентную библиотеку и стандарты ux",
+    "подходящие_вакансии": [
+      "frontend developer",
+      "ui/ux designer",
+      "fullstack developer",
+      "product manager",
+      "technical writer",
+      "mobile developer (ios)",
+      "mobile developer (android)",
+      "embedded systems engineer",
+      "network engineer"
+    ]
+  },
+  "корпоративная интеграционная шина t1": {
+    "описание": "работа с внутренней esb платформой для интеграции банковских систем, включая управление api, трансформацию данных и мониторинг интеграций",
+    "подходящие_вакансии": [
+      "integration specialist",
+      "enterprise analyst",
+      "solution architect",
+      "backend java developer",
+      "systems architect",
+      "etl developer",
+      "middle python developer"
+    ]
+  },
+  "управление продуктами в it-холдинге": {
+    "описание": "методология управления it-продуктами в экосистеме t1, включая product discovery, roadmap planning и метрики эффективности цифровых продуктов",
+    "подходящие_вакансии": [
+      "product manager",
+      "business analyst",
+      "it project manager",
+      "scrum master",
+      "ui/ux designer",
+      "analytics engineer",
+      "technical writer"
+    ]
+  },
+  "t1 kubernetes platform и оркестрация": {
+    "описание": "управление контейнеризированными приложениями в корпоративной k8s платформе t1, включая helm charts, operators и мультикластерное развертывание",
+    "подходящие_вакансии": [
+      "platform engineer",
+      "devops engineer",
+      "cloud engineer",
+      "infrastructure engineer",
+      "site reliability engineer",
+      "mlops engineer",
+      "performance engineer",
+      "solution architect",
+      "erp consultant"
+    ]
+  },
+  "автоматизированное тестирование в t1": {
+    "описание": "корпоративные практики тестирования, включая создание автотестов для банковских api, нагрузочное тестирование и continuous testing в ci/cd",
+    "подходящие_вакансии": [
+      "qa automation engineer",
+      "test manager",
+      "performance engineer",
+      "backend java developer",
+      "middle python developer",
+      "devops engineer",
+      "site reliability engineer"
+    ]
+  },
+  "распределенные системы и консистентность данных": {
+    "описание": "проектирование надежных распределенных систем для банковских операций с гарантиями acid, eventual consistency и обработкой сетевых разделений",
+    "подходящие_вакансии": [
+      "systems architect",
+      "backend java developer",
+      "solution architect",
+      "database administrator",
+      "performance engineer",
+      "site reliability engineer",
+      "nosql database engineer",
+      "big data engineer"
+    ]
+  },
+  "t1 observability stack: мониторинг и трейсинг": {
+    "описание": "использование корпоративного стека наблюдаемости для мониторинга производительности, distributed tracing и создания sli/slo метрик",
+    "подходящие_вакансии": [
+      "observability engineer",
+      "site reliability engineer",
+      "performance engineer",
+      "devops engineer",
+      "platform engineer",
+      "support engineer l2",
+      "infrastructure engineer",
+      "systems architect"
+    ]
+  },
+  "корпоративное машинное обучение (mlops)": {
+    "описание": "построение ml-пайплайнов в продакшене t1, включая model versioning, a/b тестирование моделей, мониторинг drift и автоматическое переобучение",
+    "подходящие_вакансии": [
+      "mlops engineer",
+      "machine learning engineer",
+      "data scientist",
+      "ai researcher",
+      "data engineer",
+      "platform engineer",
+      "devops engineer",
+      "analytics engineer"
+    ]
+  },
+  "t1 api gateway и управление api": {
+    "описание": "разработка и управление корпоративными api через внутренний api gateway, включая rate limiting, аутентификацию, версионирование и документирование",
+    "подходящие_вакансии": [
+      "integration specialist",
+      "backend java developer",
+      "solution architect",
+      "platform engineer",
+      "devops engineer",
+      "technical writer",
+      "security analyst"
+    ]
+  },
+  "корпоративная разработка на python": {
+    "описание": "применение python в корпоративной среде t1 для создания внутренних сервисов, автоматизации процессов и интеграции с банковскими системами",
+    "подходящие_вакансии": [
+      "middle python developer",
+      "data engineer",
+      "mlops engineer",
+      "devops engineer",
+      "qa automation engineer",
+      "integration specialist",
+      "data scientist"
+    ]
+  },
+  "agile в крупном it-холдинге": {
+    "описание": "адаптация гибких методологий для работы в масштабе холдинга, включая safe, управление зависимостями между командами и координацию release trains",
+    "подходящие_вакансии": [
+      "scrum master",
+      "it project manager",
+      "product manager",
+      "release manager",
+      "business analyst",
+      "technical writer",
+      "enterprise analyst",
+      "test manager"
+    ]
+  },
+  "t1 database cluster: postgresql и clickhouse": {
+    "описание": "администрирование корпоративных кластеров субд, оптимизация запросов, репликация данных и обеспечение высокой доступности банковских данных",
+    "подходящие_вакансии": [
+      "database administrator",
+      "big data engineer",
+      "data engineer",
+      "analytics engineer",
+      "nosql database engineer",
+      "performance engineer",
+      "site reliability engineer",
+      "etl developer"
+    ]
+  },
+  "внутренний low-code платформа t1": {
+    "описание": "разработка бизнес-приложений с использованием корпоративной low-code платформы для автоматизации внутренних процессов и создания mvp",
+    "подходящие_вакансии": [
+      "business analyst",
+      "enterprise analyst",
+      "product manager",
+      "integration specialist",
+      "technical writer",
+      "systems analyst",
+      "it project manager"
+    ]
+  },
+  "финтех-инновации и блокчейн в t1": {
+    "описание": "исследование и внедрение инновационных финансовых технологий, включая cbdc, defi интеграции и блокчейн-решения для банковской сферы",
+    "подходящие_вакансии": [
+      "blockchain developer",
+      "solution architect",
+      "security analyst",
+      "enterprise analyst",
+      "ai researcher",
+      "product manager"
+    ]
+  },
+  "t1 support excellence: техническая поддержка": {
+    "описание": "корпоративные стандарты технической поддержки, включая incident management, знание внутренних систем и эскалационные процедуры",
+    "подходящие_вакансии": [
+      "support engineer l2",
+      "technical writer",
+      "database administrator",
+      "devops engineer",
+      "qa automation engineer",
+      "business analyst",
+      "platform engineer"
+    ]
+  }
+}

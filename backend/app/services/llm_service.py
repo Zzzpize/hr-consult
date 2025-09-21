@@ -134,11 +134,20 @@ def get_next_chat_response(user_id: int, user_prompt: str) -> str:
     redis_client.add_message_to_active_history(user_id, {"role": "assistant", "content": answer})
     return answer
 
+def find_courses(vacancy: str, courses: Dict[Dict]) -> Dict:
+    matching_courses = {}
+    for course_name, course_info in courses.items():
+        if vacancy.lower() in map(str.lower, course_info.get("подходящие_вакансии", [])):
+            matching_courses[course_name] = course_info.get("описание", "")
+    return matching_courses
+
 def generate_final_plan_from_chat(user_id: int) -> Dict:
     with open("backend/app/services/career_plans.json", "r") as f: career_plans = json.load(f)
     with open("backend/app/services/career_plans_vec.json", "r") as f: career_plans_vec = json.load(f)
+    with open("backend/app/services/courses.json", "r") as f: courses = json.load(f)
     user_profile = redis_client.get_user_profile(user_id)
     best_plan = find_best_career_plan(career_plans, career_plans_vec, user_profile)
+    best_courses = find_courses(best_plan.get("target_role", ""), courses)
     final_system_prompt = (
         f"{system_prompt_analyze}{user_profile}\n"
         f"Вот наиболее подходящий карьерный план для этого пользователя:\n{json.dumps(best_plan, ensure_ascii = False)}"
@@ -156,6 +165,7 @@ def generate_final_plan_from_chat(user_id: int) -> Dict:
     plan_data = json.loads(answer)
     plan_data['plan_id'] = f"plan_{int(datetime.now().timestamp())}_user_{user_id}"
     plan_data['created_at'] = datetime.now(timezone.utc).isoformat()
+    plan_data['relevant_courses'] = best_courses
     redis_client.clear_active_chat_history(user_id)
     return plan_data
 
@@ -188,7 +198,7 @@ def lemmatization(hr_text: str) -> Dict:
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": hr_text}
     ]
-    raw_response = exchange(messages)
+    raw_response = exchange(messages, response_format = {"type": "json_object"})
     try:
         return json.loads(raw_response)
     except json.JSONDecodeError:
