@@ -444,6 +444,8 @@ def show_hr_page():
             st.warning("Не найдено подходящих кандидатов по вашему запросу.")
         else:
             sorted_results = sorted(st.session_state.search_results, key=lambda x: x['score'], reverse=True)
+            print(sorted_results)
+            print(st.session_state.search_results)
             for result in sorted_results:
                 level = result.get('level', 1)
                 if level >= 5: border_color = "#DC143C"

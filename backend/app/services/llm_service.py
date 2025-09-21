@@ -190,21 +190,21 @@ def vectorize_all_users_in_redis():
     users = redis_client.get_all_users_info()
     for user in users:
         user_info = f"{user.get('position', '')} {user.get('about', '')} {' '.join(user.get('skills', []))}"
-        redis_client.save_user_embedding(user.get('user_id', 1), get_embedding(user_info))
+        redis_client.save_user_embedding(user.get('id'), get_embedding(user_info))
 
 def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
     hr_request = lemmatization(hr_text)
     hr_vec = get_embedding(" ".join(hr_request.get("lemmas", [])))
     vectorize_all_users_in_redis()
     users = redis_client.get_all_users_info()
+    print(users)
     scored_users = []
     for user in users:
-        user_vec = redis_client.get_user_embedding(user.get("user_id", 1))
+        user_vec = redis_client.get_user_embedding(user.get("id"))
         if user_vec is None: continue
         similarity = cosine_similarity(hr_vec, user_vec)
         scored_users.append({
-            "user_id": user.get("user_id", 1),
+            "user_id": user.get("id"),
             "score": similarity
         })
-    scored_users.sort(key = lambda u: u["score"], reverse = True)
     return scored_users[:top_k]
