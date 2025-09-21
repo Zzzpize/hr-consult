@@ -213,8 +213,7 @@ def vectorize_all_users_in_redis():
 def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
     hr_request = lemmatization(hr_text)
     hr_vec = get_embedding(" ".join(hr_request.get("lemmas", [])))
-    if not(redis_client.get_user_embedding(1)):
-        vectorize_all_users_in_redis()
+    vectorize_all_users_in_redis()
     users = redis_client.get_all_users_info()
     print(users)
     scored_users = []
