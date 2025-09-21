@@ -400,7 +400,7 @@ def show_hr_page():
 
     # --- Модальное окно для просмотра профиля ---
     if st.session_state.viewing_profile_id:
-        with st.dialog("Профиль кандидата", width="large"):
+        with st.container(border=True):
             profile_id = st.session_state.viewing_profile_id
             
             @st.cache_data(ttl=10) 
