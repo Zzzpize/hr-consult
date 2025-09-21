@@ -105,6 +105,9 @@ def show_employee_page():
 
     st.markdown("---")
 
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "👤 Мой профиль"
+
     tab_profile, tab_plan, tab_offers = st.tabs([
         "👤 Мой профиль", 
         "🗺️ Карьерный план", 
@@ -117,6 +120,7 @@ def show_employee_page():
     # --- ВКЛАДКА 1: МОЙ ПРОФИЛЬ ---
     # =====================================================================================
     with tab_profile:
+        st.session_state.active_tab = "👤 Мой профиль"
         @st.cache_data(ttl=10) 
         def get_all_profile_data(uid):
             profile = api_client.get_user_profile(uid)
@@ -222,6 +226,7 @@ def show_employee_page():
     # --- ВКЛАДКА 2: КАРЬЕРНЫЙ ПЛАН ---
     # =====================================================================================
         with tab_plan:
+            st.session_state.active_tab = "🗺️ Карьерный план"
             st.header("🗺️ Ваши карьерные планы")
             user_id = st.session_state.user_info.get('user_id')
 
@@ -240,17 +245,7 @@ def show_employee_page():
                         title = plan.get('plan_title', f'План {len(plans)-i}')
                         date = plan.get('created_at', 'Неизвестная дата')[:10]
                         with st.expander(f"**{title}** (от {date})"):
-                            st.success(f"**Анализ:** {plan.get('current_analysis', 'Нет данных.')}")
-                            path = plan.get('recommended_path', {})
-                            st.info(f"**Рекомендация:** {path.get('target_role', 'Не определена')}. **Обоснование:** {path.get('why_it_fits', 'Нет данных.')}")
-                            st.markdown("**Навыки для развития:**")
-                            skill_gap = plan.get("skill_gap", [])
-                            if skill_gap:
-                                for gap in skill_gap: st.markdown(f"- **`{gap.get('skill')}`** — {gap.get('reason')}")
-                            st.markdown("**План действий:**")
-                            action_steps = plan.get("actionable_steps", [])
-                            if action_steps:
-                                for step in action_steps: st.markdown(f"**{step.get('step')}. ({step.get('type')}):** {step.get('description')} ({step.get('timeline')})")
+                            _display_career_plan(plan)
                 else:
                     st.info("У вас пока нет сохраненных планов. Создайте свой первый план с помощью ИИ-консультанта!")
                 st.markdown("---")
@@ -330,6 +325,7 @@ def show_employee_page():
     # --- ВКЛАДКА 3: ОФФЕРЫ ---
     # =====================================================================================
     with tab_offers:
+        st.session_state.active_tab = "📬 Офферы"
         st.header("📬 Ваши предложения")
         user_id = st.session_state.user_info.get('user_id')
         offers = api_client.get_user_offers(user_id)
