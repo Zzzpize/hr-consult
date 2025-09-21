@@ -192,14 +192,14 @@ def find_best_candidate(users_list: List[Dict], hr_request: Dict) -> Dict:
         user_vec = redis_client.get_user_embedding(user.get('user_id', 1))
         similarity = cosine_similarity(hr_vec, user_vec)
         if similarity > best_score:
-            best_candidate, best_score = user, similarity
+            best_candidate, best_score = {'user_id' : user.get('user_id', 1), 'score': similarity}, similarity
     return best_candidate
 
 def vectorize_all_users_in_redis():
     users = redis_client.get_all_users_info()
     for user in users:
         if user.get('user_id', 1) != 1:
-            user_info = " ".join(user.get("skills", []))
+            user_info = f"{user.get('position', '')} {user.get('about', '')} {' '.join(user.get('skills', []))}"
             redis_client.save_user_embedding(user.get('user_id', 1), get_embedding(user_info))
 
 def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
