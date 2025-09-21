@@ -58,6 +58,16 @@ st.markdown(HIDE_DEFAULT_FORMAT, unsafe_allow_html=True)
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_info = {}
+    st.session_state.event_response = None
+    st.session_state.active_tab = "👤 Мой профиль"
+    st.session_state.edit_mode = False
+    st.session_state.chat_active = False
+    st.session_state.processing_bot_response = False
+    st.session_state.messages = []
+    st.session_state.generated_plan = None
+    st.session_state.sending_offer_to = None
+    st.session_state.search_results = None
+    st.session_state.viewing_profile_id = None
 
 # =====================================================================================
 # --- СТРАНИЦА ВХОДА ---
@@ -105,8 +115,6 @@ def show_employee_page():
 
     st.markdown("---")
 
-    if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = "👤 Мой профиль"
 
     tab_profile, tab_plan, tab_offers = st.tabs([
         "👤 Мой профиль", 
@@ -120,7 +128,6 @@ def show_employee_page():
     # --- ВКЛАДКА 1: МОЙ ПРОФИЛЬ ---
     # =====================================================================================
     with tab_profile:
-        st.session_state.active_tab = "👤 Мой профиль"
         @st.cache_data(ttl=10) 
         def get_all_profile_data(uid):
             profile = api_client.get_user_profile(uid)
@@ -225,107 +232,105 @@ def show_employee_page():
     # =====================================================================================
     # --- ВКЛАДКА 2: КАРЬЕРНЫЙ ПЛАН ---
     # =====================================================================================
-        with tab_plan:
-            st.session_state.active_tab = "🗺️ Карьерный план"
-            st.header("🗺️ Ваши карьерные планы")
-            user_id = st.session_state.user_info.get('user_id')
+    with tab_plan:
+        st.header("🗺️ Ваши карьерные планы")
+        user_id = st.session_state.user_info.get('user_id')
 
-            if 'chat_active' not in st.session_state: st.session_state.chat_active = False
-            if 'processing_bot_response' not in st.session_state: st.session_state.processing_bot_response = False
-            if "messages" not in st.session_state: st.session_state.messages = []
-            if 'generated_plan' not in st.session_state: st.session_state.generated_plan = None
+        if 'chat_active' not in st.session_state: st.session_state.chat_active = False
+        if 'processing_bot_response' not in st.session_state: st.session_state.processing_bot_response = False
+        if "messages" not in st.session_state: st.session_state.messages = []
+        if 'generated_plan' not in st.session_state: st.session_state.generated_plan = None
 
-            if not st.session_state.generated_plan:
-                with st.spinner("Загрузка сохраненных планов..."):
-                    saved_plans_data = api_client.get_all_career_plans(user_id)
-                if saved_plans_data and saved_plans_data.get("plans"):
-                    st.subheader("Сохраненные планы")
-                    plans = saved_plans_data["plans"]
-                    for i, plan in enumerate(reversed(plans)):
-                        title = plan.get('plan_title', f'План {len(plans)-i}')
-                        date = plan.get('created_at', 'Неизвестная дата')[:10]
-                        with st.expander(f"**{title}** (от {date})"):
-                            _display_career_plan(plan)
+        if not st.session_state.generated_plan:
+            with st.spinner("Загрузка сохраненных планов..."):
+                saved_plans_data = api_client.get_all_career_plans(user_id)
+            if saved_plans_data and saved_plans_data.get("plans"):
+                st.subheader("Сохраненные планы")
+                plans = saved_plans_data["plans"]
+                for i, plan in enumerate(reversed(plans)):
+                    title = plan.get('plan_title', f'План {len(plans)-i}')
+                    date = plan.get('created_at', 'Неизвестная дата')[:10]
+                    with st.expander(f"**{title}** (от {date})"):
+                        _display_career_plan(plan)
+            else:
+                st.info("У вас пока нет сохраненных планов. Создайте свой первый план с помощью ИИ-консультанта!")
+            st.markdown("---")
+
+        if not st.session_state.chat_active and not st.session_state.generated_plan:
+            if st.button("💬 Начать новый диалог...", use_container_width=True, type="primary"):
+                api_client.clear_chat_history(user_id)
+                st.session_state.event_response = api_client.trigger_gamification_event(user_id, "FIRST_CHAT_MESSAGE")
+                st.session_state.chat_active = True
+                st.rerun()
+
+        elif st.session_state.chat_active:
+            st.subheader("Создание нового плана")
+            chat_container = st.container(height=400, border=True)
+            if not st.session_state.get("messages"):
+                with st.spinner("Загрузка диалога..."):
+                    history_data = api_client.get_chat_history(user_id)
+                if history_data and history_data.get("history"):
+                    st.session_state.messages = history_data["history"]
                 else:
-                    st.info("У вас пока нет сохраненных планов. Создайте свой первый план с помощью ИИ-консультанта!")
-                st.markdown("---")
-
-            if not st.session_state.chat_active and not st.session_state.generated_plan:
-                if st.button("💬 Начать новый диалог...", use_container_width=True, type="primary"):
-                    api_client.clear_chat_history(user_id)
-                    st.session_state.event_response = api_client.trigger_gamification_event(user_id, "FIRST_CHAT_MESSAGE")
-                    st.session_state.chat_active = True
-                    st.rerun()
-
-            elif st.session_state.chat_active:
-                st.subheader("Создание нового плана")
-                chat_container = st.container(height=400, border=True)
-                if not st.session_state.get("messages"):
-                    with st.spinner("Загрузка диалога..."):
-                        history_data = api_client.get_chat_history(user_id)
-                    if history_data and history_data.get("history"):
-                        st.session_state.messages = history_data["history"]
-                    else:
-                        st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
-                
-                for message in st.session_state.messages:
-                    with chat_container.chat_message(message["role"]): st.markdown(message["content"])
-                
-                if st.session_state.processing_bot_response:
-                    with chat_container.chat_message("assistant"):
-                        placeholder = st.empty()
-                        placeholder.markdown("Печатаю...")
-                        last_user_message = next((msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "user"), None)
-                        if last_user_message:
-                            response_data = api_client.get_chat_response(user_id, last_user_message)
-                            bot_response = response_data.get("response", "Извините, произошла ошибка.") if response_data else "Не удалось получить ответ от сервера."
-                            placeholder.markdown(bot_response)
-                            st.session_state.messages.append({"role": "assistant", "content": bot_response})
-                            st.session_state.processing_bot_response = False
-                            st.rerun()
-                
-                if prompt := st.chat_input("Напишите ваше сообщение..."):
-                    st.session_state.messages.append({"role": "user", "content": prompt})
-                    st.session_state.processing_bot_response = True
-                    st.rerun()
-
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    if len(st.session_state.messages) > 3:
-                        if st.button("✅ Сгенерировать и сохранить план", use_container_width=True):
-                            with st.spinner("Систематизирую всю информацию..."):
-                                plan_data_response = api_client.generate_final_plan_from_chat(user_id)
-                                if plan_data_response and plan_data_response.get("plan"):
-                                    api_client.save_career_plan(user_id, plan_data_response.get("plan"))
-                                    st.session_state.event_response = api_client.trigger_gamification_event(user_id, "CAREER_PLAN_GENERATED")
-                                    st.session_state.generated_plan = plan_data_response.get("plan")
-                                    st.session_state.chat_active = False
-                                    st.cache_data.clear()
-                                    st.rerun()
-                with col2:
-                    if st.button("❌ Отменить", use_container_width=True):
-                        with st.spinner("Отмена диалога..."):
-                            api_client.clear_chat_history(user_id)
-                        st.session_state.chat_active = False
-                        st.session_state.messages = []
+                    st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
+            
+            for message in st.session_state.messages:
+                with chat_container.chat_message(message["role"]): st.markdown(message["content"])
+            
+            if st.session_state.processing_bot_response:
+                with chat_container.chat_message("assistant"):
+                    placeholder = st.empty()
+                    placeholder.markdown("Печатаю...")
+                    last_user_message = next((msg["content"] for msg in reversed(st.session_state.messages) if msg["role"] == "user"), None)
+                    if last_user_message:
+                        response_data = api_client.get_chat_response(user_id, last_user_message)
+                        bot_response = response_data.get("response", "Извините, произошла ошибка.") if response_data else "Не удалось получить ответ от сервера."
+                        placeholder.markdown(bot_response)
+                        st.session_state.messages.append({"role": "assistant", "content": bot_response})
+                        st.session_state.processing_bot_response = False
                         st.rerun()
+            
+            if prompt := st.chat_input("Напишите ваше сообщение..."):
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                st.session_state.processing_bot_response = True
+                st.rerun()
 
-            if st.session_state.generated_plan:
-                st.success("План успешно создан и сохранен!")
-                st.balloons()
-                plan = st.session_state.generated_plan
-                _display_career_plan(plan)
-                if st.button("Отлично, спасибо!"):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if len(st.session_state.messages) > 3:
+                    if st.button("✅ Сгенерировать и сохранить план", use_container_width=True):
+                        with st.spinner("Систематизирую всю информацию..."):
+                            plan_data_response = api_client.generate_final_plan_from_chat(user_id)
+                            if plan_data_response and plan_data_response.get("plan"):
+                                api_client.save_career_plan(user_id, plan_data_response.get("plan"))
+                                st.session_state.event_response = api_client.trigger_gamification_event(user_id, "CAREER_PLAN_GENERATED")
+                                st.session_state.generated_plan = plan_data_response.get("plan")
+                                st.session_state.chat_active = False
+                                st.cache_data.clear()
+                                st.rerun()
+            with col2:
+                if st.button("❌ Отменить", use_container_width=True):
+                    with st.spinner("Отмена диалога..."):
+                        api_client.clear_chat_history(user_id)
                     st.session_state.chat_active = False
-                    st.session_state.generated_plan = None
-                    st.cache_data.clear()
+                    st.session_state.messages = []
                     st.rerun()
+
+        if st.session_state.generated_plan:
+            st.success("План успешно создан и сохранен!")
+            st.balloons()
+            plan = st.session_state.generated_plan
+            _display_career_plan(plan)
+            if st.button("Отлично, спасибо!"):
+                st.session_state.chat_active = False
+                st.session_state.generated_plan = None
+                st.cache_data.clear()
+                st.rerun()
 
     # =====================================================================================
     # --- ВКЛАДКА 3: ОФФЕРЫ ---
     # =====================================================================================
     with tab_offers:
-        st.session_state.active_tab = "📬 Офферы"
         st.header("📬 Ваши предложения")
         user_id = st.session_state.user_info.get('user_id')
         offers = api_client.get_user_offers(user_id)
@@ -591,8 +596,9 @@ else:
     st.sidebar.header(f"👤 {st.session_state.user_info.get('name')}")
     st.sidebar.caption(f"Роль: {st.session_state.user_info.get('role')}")
     if st.sidebar.button("Выйти", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.user_info = {}
+        keys_to_delete = list(st.session_state.keys())
+        for key in keys_to_delete:
+            del st.session_state[key]
         st.rerun()
 
     role = st.session_state.user_info.get("role")
@@ -604,3 +610,7 @@ else:
         show_admin_page()
     else:
         st.error("Неизвестная роль пользователя. Пожалуйста, войдите заново.")
+
+        keys_to_delete = list(st.session_state.keys())
+        for key in keys_to_delete:
+            del st.session_state[key]
