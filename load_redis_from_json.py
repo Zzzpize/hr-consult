@@ -1,9 +1,9 @@
 import redis
 import json
 import time
-import os
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+
+REDIS_HOST = 'redis'
 REDIS_PORT = 6379
 REDIS_DB = 0
 INPUT_FILENAME = 'redis_dump.json'
