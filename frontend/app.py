@@ -11,6 +11,15 @@ st.set_page_config(
     page_icon="🚀"
 )
 
+HIDE_DEFAULT_FORMAT = """
+<style>
+header [data-testid="stToolbar"] {visibility: hidden !important;}
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+
+st.markdown(HIDE_DEFAULT_FORMAT, unsafe_allow_html=True)
 # --- Инициализация состояния сессии ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -340,9 +349,9 @@ def show_hr_page():
     if 'search_results' not in st.session_state: st.session_state.search_results = None
     if 'viewing_profile_id' not in st.session_state: st.session_state.viewing_profile_id = None
 
-    # --- Модальное окно для просмотра профиля ---
     if st.session_state.viewing_profile_id:
-        with st.container(border=True):
+        @st.dialog("Профиль кандидата", width="large")
+        def show_profile_dialog():
             profile_id = st.session_state.viewing_profile_id
             
             @st.cache_data(ttl=10) 
@@ -359,22 +368,24 @@ def show_hr_page():
             else:
                 col1, col2 = st.columns([1, 4])
                 with col1:
-                    st.image(profile_data.get("photo_url", ""), use_column_width=True, caption=profile_data.get("nickname"))
+                    st.image(profile_data.get("photo_url", ""), use_container_width=True, caption=profile_data.get("nickname"))
                 with col2:
                     st.header(profile_data.get("name"))
                     st.subheader(profile_data.get("position", "Должность не указана"))
                     st.markdown(f"**Обо мне:** *{profile_data.get('about') or 'Информация не заполнена.'}*")
+                
                 st.markdown("---")
                 st.subheader("Ключевые навыки")
                 skills = profile_data.get("skills", [])
                 if skills: st.info(" ".join([f"`{skill.upper()}`" for skill in skills]))
                 else: st.warning("Пользователь не добавил ни одного навыка.")
+                
                 st.markdown("---")
                 st.subheader("Прогресс и достижения")
-                g_col1, g_col2 = st.columns(2)
+                g_col1, g_g_col2 = st.columns(2)
                 with g_col1:
                     st.metric("✨ Очки опыта (XP)", gamification_data.get('xp', 0))
-                with g_col2:
+                with g_g_col2:
                     st.metric("🚀 Уровень", f"Lvl {gamification_data.get('level', 1)}")
                 all_ach = achievements_data.get('achievements', [])
                 if all_ach:
@@ -388,6 +399,8 @@ def show_hr_page():
             if st.button("Закрыть", use_container_width=True):
                 st.session_state.viewing_profile_id = None
                 st.rerun()
+
+        show_profile_dialog()
 
     st.markdown("---")
     tab_search, tab_my_offers = st.tabs(["🔍 Поиск кандидатов", "📄 Мои офферы"])
