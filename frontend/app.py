@@ -115,6 +115,8 @@ def show_employee_page():
 
     st.markdown("---")
 
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "👤 Мой профиль"
 
     tab_profile, tab_plan, tab_offers = st.tabs([
         "👤 Мой профиль", 
@@ -128,6 +130,7 @@ def show_employee_page():
     # --- ВКЛАДКА 1: МОЙ ПРОФИЛЬ ---
     # =====================================================================================
     with tab_profile:
+        st.session_state.active_tab = "👤 Мой профиль"
         @st.cache_data(ttl=10) 
         def get_all_profile_data(uid):
             profile = api_client.get_user_profile(uid)
@@ -233,6 +236,7 @@ def show_employee_page():
     # --- ВКЛАДКА 2: КАРЬЕРНЫЙ ПЛАН ---
     # =====================================================================================
     with tab_plan:
+        st.session_state.active_tab = "🗺️ Карьерный план"
         st.header("🗺️ Ваши карьерные планы")
         user_id = st.session_state.user_info.get('user_id')
 
@@ -313,7 +317,7 @@ def show_employee_page():
                     with st.spinner("Отмена диалога..."):
                         api_client.clear_chat_history(user_id)
                     st.session_state.chat_active = False
-                    st.session_state.messages = []
+                    st.session_state.messages = st.session_state.messages = [{"role": "assistant", "content": "Привет! Я 'Навигатор'. Давайте начнем. Расскажите немного о себе, и мы вместе построим ваш новый карьерный план."}]
                     st.rerun()
 
         if st.session_state.generated_plan:
@@ -331,6 +335,7 @@ def show_employee_page():
     # --- ВКЛАДКА 3: ОФФЕРЫ ---
     # =====================================================================================
     with tab_offers:
+        st.session_state.active_tab = "📬 Офферы"
         st.header("📬 Ваши предложения")
         user_id = st.session_state.user_info.get('user_id')
         offers = api_client.get_user_offers(user_id)
