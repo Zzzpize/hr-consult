@@ -21,6 +21,7 @@ app.include_router(offers.router)
 app.include_router(profile.router)
 app.include_router(assets.router)
 
+
 @app.get("/", tags=["Root"])
 def read_root():
     return {"status": "ok", "message": "Welcome to Talent Navigator AI API!"}
