@@ -48,6 +48,24 @@ services:
       timeout: 5s
       retries: 5
 
+  db-loader:
+    build:
+      context: .
+      dockerfile: ./backend/DockerFile
+    container_name: talent_navigator_db_loader
+
+    command: python load_redis_from_json.py
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles:
+      - load_db
+
+
 networks:
   app-network:
     driver: bridge
