@@ -13,11 +13,45 @@ st.set_page_config(
 
 HIDE_DEFAULT_FORMAT = """
 <style>
-header [data-testid="stToolbar"] {visibility: hidden !important;}
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
+header [data-testid="stToolbar"] {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+header:hover [data-testid="stToolbar"] {
+    opacity: 1;
+}
 </style>
 """
+
+def _display_career_plan(plan: dict):
+    """Универсальная функция для красивого отображения карьерного плана."""
+    st.success(f"**Анализ:** {plan.get('current_analysis', 'Нет данных.')}")
+    
+    path = plan.get('recommended_path', {})
+    st.info(f"**Рекомендация:** {path.get('target_role', 'Не определена')}. "
+            f"**Обоснование:** {path.get('why_it_fits', 'Нет данных.')}")
+
+    st.markdown("**Навыки для развития:**")
+    skill_gap = plan.get("skill_gap", [])
+    if skill_gap:
+        for gap in skill_gap:
+            st.markdown(f"- **`{gap.get('skill')}`** — {gap.get('reason')}")
+    
+    st.markdown("**План действий:**")
+    action_steps = plan.get("actionable_steps", [])
+    if action_steps:
+        for step in action_steps:
+            st.markdown(f"**{step.get('step')}. ({step.get('type')}):** {step.get('description')} ({step.get('timeline')})")
+
+    st.markdown("**🎓 Рекомендуемые курсы:**")
+    courses = plan.get('relevant_courses', {})
+    if courses:
+        for title, description in courses.items():
+            with st.expander(title):
+                st.write(description)
+    else:
+        st.caption("Для этого плана не было предложено конкретных курсов.")
 
 st.markdown(HIDE_DEFAULT_FORMAT, unsafe_allow_html=True)
 # --- Инициализация состояния сессии ---
@@ -285,18 +319,7 @@ def show_employee_page():
                 st.success("План успешно создан и сохранен!")
                 st.balloons()
                 plan = st.session_state.generated_plan
-                st.subheader(plan.get('plan_title', 'Ваш новый карьерный план'))
-                st.success(f"**Анализ:** {plan.get('current_analysis', 'Нет данных.')}")
-                path = plan.get('recommended_path', {})
-                st.info(f"**Рекомендация:** {path.get('target_role', 'Не определена')}. **Обоснование:** {path.get('why_it_fits', 'Нет данных.')}")
-                st.markdown("**Навыки для развития:**")
-                skill_gap = plan.get("skill_gap", [])
-                if skill_gap:
-                    for gap in skill_gap: st.markdown(f"- **`{gap.get('skill')}`** — {gap.get('reason')}")
-                st.markdown("**План действий:**")
-                action_steps = plan.get("actionable_steps", [])
-                if action_steps:
-                    for step in action_steps: st.markdown(f"**{step.get('step')}. ({step.get('type')}):** {step.get('description')} ({step.get('timeline')})")
+                _display_career_plan(plan)
                 if st.button("Отлично, спасибо!"):
                     st.session_state.chat_active = False
                     st.session_state.generated_plan = None
