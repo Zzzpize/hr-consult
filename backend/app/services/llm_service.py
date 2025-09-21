@@ -57,7 +57,7 @@ example_plan = {
   ]
 }
 
-def exchange(messages: list, temperature: float = 1, max_tokens: int = 2000, response_format = None):
+def exchange(messages: list, temperature: float = 1, max_tokens: int = 50000, response_format = None):
     try:
         client = OpenAI(api_key = API_KEY, base_url = BASE_URL)
         resp = client.chat.completions.create(
