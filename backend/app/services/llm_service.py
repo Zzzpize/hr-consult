@@ -99,7 +99,7 @@ def find_best_career_plan(career_plans: List[Dict], career_plans_vec: List[List[
     user_vec = get_embedding(user_text)
     best_match, best_score = None, -1
     for plan, plan_vec in zip(career_plans, career_plans_vec):
-        score = cosine_similarity(user_vec, plan_vec)
+        score = euclidean_distance(user_vec, plan_vec)
         if score > best_score:
             best_match, best_score = plan, score
     return best_match
@@ -212,7 +212,7 @@ def find_similar_users(hr_text: str, top_k: int = 5) -> List[Dict]:
         if user.get("id") != 1:
             user_vec = redis_client.get_user_embedding(user.get("id"))
             if user_vec is None: continue
-            similarity = cosine_similarity(hr_vec, user_vec)
+            similarity = euclidean_distance(hr_vec, user_vec)
             scored_users.append({
                 "user_id": user.get("id"),
                 "score": similarity
