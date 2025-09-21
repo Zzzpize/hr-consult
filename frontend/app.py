@@ -10,6 +10,8 @@ st.set_page_config(
     page_title="Talent Navigator AI",
     page_icon="🚀"
 )
+
+'''
 HIDE_DEFAULT_FORMAT = """
 <style>
 /* скрываем дефолтные элементы Streamlit */
@@ -64,7 +66,9 @@ input, textarea, select {
 }
 </style>
 """
+
 st.markdown(HIDE_DEFAULT_FORMAT, unsafe_allow_html=True)
+'''
 # --- Инициализация состояния сессии ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -388,28 +392,75 @@ def show_employee_page():
 def show_hr_page():
     st.title(f"📇 Панель HR-специалиста, {st.session_state.user_info.get('name')}")
     st.caption("Используйте умный поиск для нахождения идеальных кандидатов на основе их опыта и навыков.")
+    
+    # --- Инициализация состояний ---
+    if 'sending_offer_to' not in st.session_state: st.session_state.sending_offer_to = None
+    if 'search_results' not in st.session_state: st.session_state.search_results = None
+    if 'viewing_profile_id' not in st.session_state: st.session_state.viewing_profile_id = None
+
+    # --- Модальное окно для просмотра профиля ---
+    if st.session_state.viewing_profile_id:
+        with st.dialog("Профиль кандидата", width="large"):
+            profile_id = st.session_state.viewing_profile_id
+            
+            @st.cache_data(ttl=10) 
+            def get_all_profile_data(uid):
+                profile = api_client.get_user_profile(uid)
+                gamification = api_client.get_user_progress(uid)
+                achievements = api_client.get_user_achievements_status(uid)
+                return profile, gamification, achievements
+            
+            profile_data, gamification_data, achievements_data = get_all_profile_data(profile_id)
+            
+            if not profile_data:
+                st.error("Не удалось загрузить профиль этого пользователя.")
+            else:
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    st.image(profile_data.get("photo_url", ""), use_column_width=True, caption=profile_data.get("nickname"))
+                with col2:
+                    st.header(profile_data.get("name"))
+                    st.subheader(profile_data.get("position", "Должность не указана"))
+                    st.markdown(f"**Обо мне:** *{profile_data.get('about') or 'Информация не заполнена.'}*")
+                st.markdown("---")
+                st.subheader("Ключевые навыки")
+                skills = profile_data.get("skills", [])
+                if skills: st.info(" ".join([f"`{skill.upper()}`" for skill in skills]))
+                else: st.warning("Пользователь не добавил ни одного навыка.")
+                st.markdown("---")
+                st.subheader("Прогресс и достижения")
+                g_col1, g_col2 = st.columns(2)
+                with g_col1:
+                    st.metric("✨ Очки опыта (XP)", gamification_data.get('xp', 0))
+                with g_col2:
+                    st.metric("🚀 Уровень", f"Lvl {gamification_data.get('level', 1)}")
+                all_ach = achievements_data.get('achievements', [])
+                if all_ach:
+                    cols = st.columns(len(all_ach))
+                    for i, ach in enumerate(all_ach):
+                        with cols[i]:
+                            icon_url = f"http://localhost:8000/assets/icons/{ach['icon']}"
+                            if not ach['unlocked']: icon_url += "?grayscale=true"
+                            st.image(icon_url, width=64, caption=f"**{ach['name']}**" if ach['unlocked'] else ach['name'])
+            
+            if st.button("Закрыть", use_container_width=True):
+                st.session_state.viewing_profile_id = None
+                st.rerun()
+
     st.markdown("---")
-
-    if 'sending_offer_to' not in st.session_state:
-        st.session_state.sending_offer_to = None
-    if 'search_results' not in st.session_state:
-        st.session_state.search_results = None
-
     tab_search, tab_my_offers = st.tabs(["🔍 Поиск кандидатов", "📄 Мои офферы"])
 
     with tab_search:
         st.header("🧠 Умный поиск кандидатов")
-
+        
         if st.session_state.sending_offer_to:
             user_profile = api_client.get_user_profile(st.session_state.sending_offer_to)
             candidate_name = user_profile.get('name') if user_profile else "Неизвестный кандидат"
-            
             with st.container(border=True):
                 st.subheader(f"Отправка оффера для: {candidate_name}")
                 with st.form("offer_form"):
                     title = st.text_input("Название вакансии / проекта")
                     description = st.text_area("Описание оффера", height=200, placeholder="Подробно опишите роль, задачи и условия...")
-                    
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.form_submit_button("✅ Отправить оффер", type="primary", use_container_width=True):
@@ -428,53 +479,49 @@ def show_hr_page():
                             st.rerun()
 
         with st.form("search_form"):
-            search_prompt = st.text_area("Описание идеального кандидата:", height=150, placeholder="Например: 'Ищу опытного разработчика на Python со знанием облачных технологий для нового проекта'")
+            search_prompt = st.text_area("Описание идеального кандидата:", height=150, placeholder="Например: 'Ищу опытного разработчика на Python со знанием облачных технологий...'")
             submitted = st.form_submit_button("Найти кандидатов", type="primary", use_container_width=True)
-            
             if submitted and search_prompt:
                 with st.spinner("ИИ анализирует профили сотрудников..."):
                     st.session_state.search_results = api_client.match_candidates(search_prompt)
-
+        
         st.markdown("---")
         st.subheader("🏆 Результаты поиска:")
         
-        if st.session_state.search_results is None:
-            st.info("Введите запрос и нажмите 'Найти кандидатов', чтобы увидеть результаты.")
-        elif not st.session_state.search_results:
-            st.warning("Не найдено подходящих кандидатов по вашему запросу.")
+        if st.session_state.search_results is not None:
+            if not st.session_state.search_results:
+                st.warning("Не найдено подходящих кандидатов по вашему запросу.")
+            else:
+                sorted_results = sorted(st.session_state.search_results, key=lambda x: x['score'], reverse=True)
+                for result in sorted_results:
+                    level = result.get('level', 1)
+                    border_color = "#808080"
+                    if level >= 5: border_color = "#DC143C"
+                    elif level >= 4: border_color = "#2E8B57"
+                    elif level >= 3: border_color = "#4169E1"
+                    elif level >= 2: border_color = "#FFD700"
+                    
+                    st.markdown(f'<div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px; margin-bottom: 10px;">', unsafe_allow_html=True)
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.subheader(f"{result.get('name')} (Lvl {level})")
+                        st.caption(f"Должность: {result.get('position')}")
+                    with col2:
+                        match_percent = int(result.get('score', 0) * 100)
+                        st.progress(match_percent, text=f"Релевантность: {match_percent}%")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Посмотреть профиль", key=f"view_{result.get('user_id')}", use_container_width=True):
+                            st.session_state.viewing_profile_id = result.get('user_id')
+                            st.rerun()
+                    with c2:
+                        if st.button("✍️ Отправить оффер", key=f"offer_{result.get('user_id')}", use_container_width=True, type="secondary"):
+                            st.session_state.sending_offer_to = result.get('user_id')
+                            st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
         else:
-            sorted_results = sorted(st.session_state.search_results, key=lambda x: x['score'], reverse=True)
-            print(sorted_results)
-            print(st.session_state.search_results)
-            for result in sorted_results:
-                level = result.get('level', 1)
-                if level >= 5: border_color = "#DC143C"
-                elif level >= 4: border_color = "#2E8B57"
-                elif level >= 3: border_color = "#4169E1"
-                elif level >= 2: border_color = "#FFD700"
-                elif level == 1: border_color = "#808080"
-
-                st.markdown(f'<div style="border: 2px solid {border_color}; border-radius: 10px; padding: 15px; margin-bottom: 10px;">', unsafe_allow_html=True)
-                
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.subheader(f"{result.get('name')} (Lvl {level})")
-                    st.caption(f"Должность: {result.get('position')}")
-                with col2:
-                    match_percent = int(result.get('score', 0) * 100)
-                    st.progress(match_percent, text=f"Релевантность: {match_percent}%")
-
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("Посмотреть профиль", key=f"view_{result.get('user_id')}", use_container_width=True):
-                        st.toast(f"Просмотр профиля {result.get('name')} (симуляция)")
-                with c2:
-                    if st.button("✍️ Отправить оффер", key=f"offer_{result.get('user_id')}", use_container_width=True, type="secondary"):
-                        st.session_state.sending_offer_to = result.get('user_id')
-                        st.rerun()
-
-                st.markdown('</div>', unsafe_allow_html=True)
-
+            st.info("Введите запрос и нажмите 'Найти кандидатов', чтобы увидеть результаты.")
+    
     with tab_my_offers:
         st.header("📄 Отслеживание отправленных офферов")
         hr_id = st.session_state.user_info.get('user_id')
@@ -490,7 +537,6 @@ def show_hr_page():
                 user_name = user_profile.get('name') if user_profile else "Неизвестный сотрудник"
                 display_data.append({ "candidate_name": user_name, "vacancy": offer['title'], "sent_at": offer.get('timestamp', '').strip('"'), "status": offer['status'] })
             st.data_editor(display_data, column_config={"candidate_name": "Кандидат", "vacancy": "Вакансия", "sent_at": "Отправлено", "status": "Статус"}, hide_index=True, use_container_width=True, disabled=True)
-
 # =====================================================================================
 # --- СТРАНИЦА АДМИНА ---
 # =====================================================================================
